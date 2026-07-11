@@ -1,0 +1,267 @@
+// Local-first data layer: on-device SQLite via expo-sqlite (SDK 57 async API).
+// No backend, no network — all data lives in the app's sandbox.
+
+import * as SQLite from 'expo-sqlite';
+
+import type {
+  Assignment,
+  AssignmentInput,
+  AssignmentType,
+  AssignmentWithSubject,
+  Subject,
+} from '../types';
+
+const DB_NAME = 'classtrack.db';
+const SCHEMA_VERSION = 1;
+
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
+
+/** Open (once) and migrate the database. Call at app start; safe to call anywhere. */
+export function getDb(): Promise<SQLite.SQLiteDatabase> {
+  if (!dbPromise) {
+    dbPromise = openAndMigrate().catch((e) => {
+      dbPromise = null; // allow retry on next call
+      throw e;
+    });
+  }
+  return dbPromise;
+}
+
+async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
+  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  await db.execAsync('PRAGMA journal_mode = WAL');
+  await db.execAsync('PRAGMA foreign_keys = ON');
+  await migrate(db);
+  return db;
+}
+
+async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
+  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  const current = row?.user_version ?? 0;
+  if (current >= SCHEMA_VERSION) return;
+
+  if (current < 1) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS subjects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject_id INTEGER NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'homework',
+        due_at INTEGER NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        completed INTEGER NOT NULL DEFAULT 0,
+        notification_ids TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_assignments_subject ON assignments(subject_id);
+      CREATE INDEX IF NOT EXISTS idx_assignments_due ON assignments(due_at);
+    `);
+  }
+
+  await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+}
+
+// ---------- row mapping ----------
+
+interface SubjectRow {
+  id: number;
+  name: string;
+  color: string;
+  created_at: number;
+}
+
+interface AssignmentRow {
+  id: number;
+  subject_id: number;
+  title: string;
+  type: string;
+  due_at: number;
+  notes: string;
+  completed: number;
+  notification_ids: string;
+  created_at: number;
+}
+
+interface AssignmentJoinedRow extends AssignmentRow {
+  subject_name: string;
+  subject_color: string;
+}
+
+function toSubject(r: SubjectRow): Subject {
+  return { id: r.id, name: r.name, color: r.color, createdAt: r.created_at };
+}
+
+function parseNotificationIds(json: string): string[] {
+  try {
+    const v = JSON.parse(json);
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function toAssignment(r: AssignmentRow): Assignment {
+  return {
+    id: r.id,
+    subjectId: r.subject_id,
+    title: r.title,
+    type: r.type as AssignmentType,
+    dueAt: r.due_at,
+    notes: r.notes,
+    completed: r.completed !== 0,
+    notificationIds: parseNotificationIds(r.notification_ids),
+    createdAt: r.created_at,
+  };
+}
+
+function toAssignmentWithSubject(r: AssignmentJoinedRow): AssignmentWithSubject {
+  return { ...toAssignment(r), subjectName: r.subject_name, subjectColor: r.subject_color };
+}
+
+const JOIN_SELECT = `
+  SELECT a.*, s.name AS subject_name, s.color AS subject_color
+  FROM assignments a JOIN subjects s ON s.id = a.subject_id
+`;
+
+// ---------- subjects ----------
+
+export async function listSubjects(): Promise<Subject[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<SubjectRow>('SELECT * FROM subjects ORDER BY name COLLATE NOCASE');
+  return rows.map(toSubject);
+}
+
+export async function getSubject(id: number): Promise<Subject | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<SubjectRow>('SELECT * FROM subjects WHERE id = ?', id);
+  return row ? toSubject(row) : null;
+}
+
+export async function createSubject(name: string, color: string): Promise<Subject> {
+  const db = await getDb();
+  const createdAt = Date.now();
+  const res = await db.runAsync(
+    'INSERT INTO subjects (name, color, created_at) VALUES (?, ?, ?)',
+    name,
+    color,
+    createdAt,
+  );
+  return { id: res.lastInsertRowId, name, color, createdAt };
+}
+
+export async function updateSubject(id: number, name: string, color: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('UPDATE subjects SET name = ?, color = ? WHERE id = ?', name, color, id);
+}
+
+/**
+ * Delete a subject; its assignments cascade-delete. Returns the notification
+ * ids of every deleted assignment so the caller can cancel the reminders.
+ */
+export async function deleteSubject(id: number): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ notification_ids: string }>(
+    'SELECT notification_ids FROM assignments WHERE subject_id = ?',
+    id,
+  );
+  await db.runAsync('DELETE FROM subjects WHERE id = ?', id);
+  return rows.flatMap((r) => parseNotificationIds(r.notification_ids));
+}
+
+/** Open (not-completed) assignment counts per subject id. */
+export async function countOpenAssignments(): Promise<Record<number, number>> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ subject_id: number; n: number }>(
+    'SELECT subject_id, COUNT(*) AS n FROM assignments WHERE completed = 0 GROUP BY subject_id',
+  );
+  const out: Record<number, number> = {};
+  for (const r of rows) out[r.subject_id] = r.n;
+  return out;
+}
+
+// ---------- assignments ----------
+
+export async function listOpenAssignmentsWithSubject(): Promise<AssignmentWithSubject[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<AssignmentJoinedRow>(
+    `${JOIN_SELECT} WHERE a.completed = 0 ORDER BY a.due_at ASC, a.id ASC`,
+  );
+  return rows.map(toAssignmentWithSubject);
+}
+
+export async function listAssignmentsForSubject(subjectId: number): Promise<AssignmentWithSubject[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<AssignmentJoinedRow>(
+    `${JOIN_SELECT} WHERE a.subject_id = ? ORDER BY a.completed ASC, a.due_at ASC, a.id ASC`,
+    subjectId,
+  );
+  return rows.map(toAssignmentWithSubject);
+}
+
+export async function getAssignmentWithSubject(id: number): Promise<AssignmentWithSubject | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<AssignmentJoinedRow>(`${JOIN_SELECT} WHERE a.id = ?`, id);
+  return row ? toAssignmentWithSubject(row) : null;
+}
+
+export async function createAssignment(input: AssignmentInput): Promise<Assignment> {
+  const db = await getDb();
+  const createdAt = Date.now();
+  const res = await db.runAsync(
+    `INSERT INTO assignments (subject_id, title, type, due_at, notes, completed, notification_ids, created_at)
+     VALUES (?, ?, ?, ?, ?, 0, '[]', ?)`,
+    input.subjectId,
+    input.title,
+    input.type,
+    input.dueAt,
+    input.notes,
+    createdAt,
+  );
+  return {
+    id: res.lastInsertRowId,
+    ...input,
+    completed: false,
+    notificationIds: [],
+    createdAt,
+  };
+}
+
+export async function updateAssignment(id: number, input: AssignmentInput): Promise<void> {
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE assignments SET subject_id = ?, title = ?, type = ?, due_at = ?, notes = ? WHERE id = ?',
+    input.subjectId,
+    input.title,
+    input.type,
+    input.dueAt,
+    input.notes,
+    id,
+  );
+}
+
+export async function setAssignmentCompleted(id: number, completed: boolean): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('UPDATE assignments SET completed = ? WHERE id = ?', completed ? 1 : 0, id);
+}
+
+export async function setAssignmentNotificationIds(id: number, ids: string[]): Promise<void> {
+  const db = await getDb();
+  await db.runAsync('UPDATE assignments SET notification_ids = ? WHERE id = ?', JSON.stringify(ids), id);
+}
+
+/** Delete an assignment. Returns its notification ids so the caller can cancel them. */
+export async function deleteAssignment(id: number): Promise<string[]> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ notification_ids: string }>(
+    'SELECT notification_ids FROM assignments WHERE id = ?',
+    id,
+  );
+  await db.runAsync('DELETE FROM assignments WHERE id = ?', id);
+  return row ? parseNotificationIds(row.notification_ids) : [];
+}

@@ -23,16 +23,9 @@ Manual entry of assignments / homework / tests, organized by subject, with local
 - ✅ Expo project scaffolded (blank-typescript), standalone git repo initialized (independent of the firstmate repo)
 - ✅ Dependencies installed via `expo install` (SDK-matched)
 - ✅ `src/theme.ts` written (colors, subject palette, spacing tokens)
-- ⬜ Data layer, notifications helper, screens, navigation — **not yet written** (only theme.ts exists under src/)
-
-### Next steps to finish Layer 1
-1. `src/types.ts` — Subject, Assignment types
-2. `src/db/database.ts` — open SQLite, schema/migrations, CRUD
-3. `src/notifications.ts` — permission + Android channel + schedule/cancel reminders
-4. `src/screens/` — TodayScreen, SubjectsScreen, SubjectDetailScreen, AssignmentEditScreen, SettingsScreen
-5. `src/components/` — AssignmentRow, EmptyState
-6. `App.tsx` — NavigationContainer + tabs + stack; init DB on mount
-7. Validate: `npx tsc --noEmit`, then run on device via Expo Go / dev build
+- ✅ **Layer 1 code complete**: `src/types.ts`, `src/db/database.ts` (SQLite, `PRAGMA user_version` migrations, CRUD), `src/notifications.ts` (permission, Android channel, evening-before 6:00 PM + morning-of 7:30 AM reminders), all five screens, `AssignmentRow`/`EmptyState`, typed navigation (`src/navigation.ts`), `App.tsx` (bottom tabs + native stack, DB init on mount)
+- ✅ Validated: `npx tsc --noEmit` clean (strict); `npx expo export --platform android` bundles clean (Metro + Hermes)
+- ⬜ **Not yet run on a real device/simulator** — no Android/iOS tooling in the dev environment. Next: open in Expo Go / dev build and exercise the create-subject → add-assignment → Today → complete flow and confirm reminders fire.
 
 ## Git & GitHub
 - Repo-local identity set to **wilbergr / wilbergr@users.noreply.github.com** (do NOT use the work email gwilber@wilshire.com — public repo).
