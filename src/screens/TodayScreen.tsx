@@ -31,7 +31,9 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useLayoutEffect(() => {
-    navigation.setOptions({ headerRight: () => <SparkPill /> });
+    navigation.setOptions({
+      headerRight: () => <SparkPill onPress={() => navigation.navigate('Progress')} />,
+    });
   }, [navigation]);
 
   // Flash freshly-captured assignments when they land in the list.

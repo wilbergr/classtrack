@@ -3,7 +3,7 @@
 // unique index); `progress` is a cached rollup that could be rebuilt from it.
 
 import { getDb } from '../db/database';
-import { startOfDay } from '../dates';
+import { addDays, startOfDay, startOfWeek } from '../dates';
 import { emitProgressChanged, emitSpark } from './events';
 import { levelForLifetime } from './levels';
 import type { Progress, SparkAward, SparkKind } from '../types';
@@ -15,6 +15,12 @@ export const ON_TIME_SPARKS = 5;
 export const DAY_BONUS_SPARKS = 5;
 /** After this many rewarded captures in a day, further captures earn 0 — silently. */
 export const DAILY_CAPTURE_CAP = 10;
+/** Grace tokens in hand: cap, and the weekly refill amount. */
+export const GRACE_CAP = 2;
+/** Out of tokens, momentum cools (never resets): momentum = ceil(momentum * this). */
+export const MOMENTUM_COOL_FACTOR = 0.75;
+/** First active day after a gap earns this much momentum instead of +1. */
+export const COMEBACK_MOMENTUM = 2;
 
 interface ProgressRow {
   id: number;
@@ -25,6 +31,8 @@ interface ProgressRow {
   grace: number;
   grace_week: number;
   last_active_day: number | null;
+  last_settled_day: number | null;
+  comeback: number;
   created_at: number;
 }
 
@@ -54,6 +62,71 @@ export async function getProgressAsync(): Promise<Progress> {
   return toProgress(await ensureProgressRowAsync());
 }
 
+// ---------- forgiving momentum ----------
+
+/**
+ * Lazily settle the days since the last Spark-earning action. Forgiving by
+ * design: days with nothing open are free; otherwise a grace token absorbs
+ * the miss silently; out of tokens, momentum cools (ceil(m * 0.75)) — it
+ * never resets. Any real gap arms the comeback boost (+2 on the next active
+ * day). Idempotent per day via `last_settled_day`. Call on app open and
+ * before awards; no background jobs needed.
+ */
+export async function settleMomentumAsync(now: number = Date.now()): Promise<void> {
+  const db = await getDb();
+  const p = await ensureProgressRowAsync();
+  const today = startOfDay(now);
+
+  // Weekly grace refill (Mondays), independent of activity.
+  let grace = p.grace;
+  let graceWeek = p.grace_week;
+  const week = startOfWeek(now);
+  if (graceWeek < week) {
+    grace = GRACE_CAP;
+    graceWeek = week;
+  }
+
+  let momentum = p.momentum;
+  let comeback = p.comeback;
+  const settledFrom = Math.max(p.last_active_day ?? 0, p.last_settled_day ?? 0);
+
+  if (p.last_active_day != null && settledFrom < today) {
+    for (let d = addDays(settledFrom, 1); d < today; d = addDays(d, 1)) {
+      // Free day: nothing was open at any point that day — costs nothing.
+      const open = await db.getFirstAsync<{ n: number }>(
+        'SELECT COUNT(*) AS n FROM assignments WHERE created_at < ? AND (completed = 0 OR completed_at >= ?)',
+        d + 24 * 3600 * 1000,
+        d,
+      );
+      if ((open?.n ?? 0) === 0) continue;
+      if (grace > 0) {
+        grace -= 1;
+      } else {
+        momentum = Math.ceil(momentum * MOMENTUM_COOL_FACTOR);
+      }
+      comeback = 1; // the next active day is a celebrated comeback
+    }
+  }
+
+  if (
+    grace !== p.grace ||
+    graceWeek !== p.grace_week ||
+    momentum !== p.momentum ||
+    comeback !== p.comeback ||
+    (p.last_settled_day ?? 0) < today
+  ) {
+    await db.runAsync(
+      'UPDATE progress SET grace = ?, grace_week = ?, momentum = ?, comeback = ?, last_settled_day = ? WHERE id = 1',
+      grace,
+      graceWeek,
+      momentum,
+      comeback,
+      today,
+    );
+    emitProgressChanged();
+  }
+}
+
 // ---------- awards ----------
 
 interface PendingAward {
@@ -72,9 +145,10 @@ async function awardManyAsync(
   capturedAssignmentId?: number,
 ): Promise<SparkAward[]> {
   const db = await getDb();
-  const before = await ensureProgressRowAsync();
   const now = Date.now();
   const day = startOfDay(now);
+  await settleMomentumAsync(now);
+  const before = await ensureProgressRowAsync();
 
   const landed: SparkAward[] = [];
   let earned = 0;
@@ -94,9 +168,11 @@ async function awardManyAsync(
     }
   }
 
-  // First rewarded action of the day: "showed up" bonus + momentum.
-  let momentum = before.momentum;
+  // First rewarded action of the day: "showed up" bonus + momentum
+  // (+2 instead of +1 when it's a comeback after a gap).
   if (earned > 0 && before.last_active_day !== day) {
+    const momentum =
+      before.momentum + (before.comeback ? COMEBACK_MOMENTUM : 1);
     const existing = await db.getFirstAsync<{ id: number }>(
       "SELECT id FROM ledger WHERE kind = 'day_bonus' AND day = ? LIMIT 1",
       day,
@@ -109,7 +185,6 @@ async function awardManyAsync(
         now,
       );
       earned += DAY_BONUS_SPARKS;
-      momentum = momentumOnActiveDay(before, day);
       landed.push({
         kind: 'day_bonus',
         amount: DAY_BONUS_SPARKS,
@@ -118,7 +193,7 @@ async function awardManyAsync(
       });
     }
     await db.runAsync(
-      'UPDATE progress SET momentum = ?, best_momentum = MAX(best_momentum, ?), last_active_day = ? WHERE id = 1',
+      'UPDATE progress SET momentum = ?, best_momentum = MAX(best_momentum, ?), last_active_day = ?, comeback = 0 WHERE id = 1',
       momentum,
       momentum,
       day,
@@ -144,15 +219,6 @@ async function awardManyAsync(
     });
   }
   return landed;
-}
-
-/**
- * Momentum gained by becoming active today. Phase 1 records steadily
- * (+1 per active day); the full forgiving mechanics (grace tokens, cool-down,
- * comeback boost) settle the gap first — see `settleMomentumAsync`.
- */
-function momentumOnActiveDay(p: ProgressRow, _day: number): number {
-  return p.momentum + 1;
 }
 
 /** Award for capturing (creating) an assignment. Daily-capped, once per assignment. */
@@ -197,6 +263,33 @@ export interface ProgressSummary extends Progress {
 export async function getProgressSummaryAsync(): Promise<ProgressSummary> {
   const p = await getProgressAsync();
   return { ...p, level: levelForLifetime(p.lifetime), balance: p.lifetime - p.spent };
+}
+
+export interface WeekSummary {
+  earned: number;
+  completed: number;
+  captured: number;
+}
+
+/** This week's totals straight from the ledger (Monday-based week). */
+export async function getWeekSummaryAsync(now: number = Date.now()): Promise<WeekSummary> {
+  const db = await getDb();
+  const week = startOfWeek(now);
+  const [earned, completed, captured] = await Promise.all([
+    db.getFirstAsync<{ v: number | null }>(
+      'SELECT SUM(amount) AS v FROM ledger WHERE amount > 0 AND day >= ?',
+      week,
+    ),
+    db.getFirstAsync<{ v: number }>(
+      "SELECT COUNT(*) AS v FROM ledger WHERE kind = 'complete' AND day >= ?",
+      week,
+    ),
+    db.getFirstAsync<{ v: number }>(
+      "SELECT COUNT(*) AS v FROM ledger WHERE kind = 'capture' AND day >= ?",
+      week,
+    ),
+  ]);
+  return { earned: earned?.v ?? 0, completed: completed?.v ?? 0, captured: captured?.v ?? 0 };
 }
 
 /** Rebuild the `progress` rollup from the ledger (recovery path; not used in normal flow). */

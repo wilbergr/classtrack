@@ -79,6 +79,8 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
         grace          INTEGER NOT NULL DEFAULT 2,
         grace_week     INTEGER NOT NULL DEFAULT 0,
         last_active_day INTEGER,
+        last_settled_day INTEGER,
+        comeback       INTEGER NOT NULL DEFAULT 0,
         created_at     INTEGER NOT NULL
       );
 

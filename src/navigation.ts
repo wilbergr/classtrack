@@ -27,6 +27,7 @@ export type RootStackParamList = {
   AssignmentEdit:
     | { assignmentId?: number; subjectId?: number; draft?: AssignmentDraft }
     | undefined;
+  Progress: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

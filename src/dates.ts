@@ -20,6 +20,14 @@ export function isSameDay(a: number, b: number): boolean {
   return startOfDay(a) === startOfDay(b);
 }
 
+/** Monday 00:00 of the week containing `ts`. */
+export function startOfWeek(ts: number): number {
+  const d = new Date(startOfDay(ts));
+  const sinceMonday = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - sinceMonday);
+  return d.getTime();
+}
+
 /** "3:05 PM" */
 export function formatTime(ts: number): string {
   const d = new Date(ts);

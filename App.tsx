@@ -10,7 +10,9 @@ import { getDb } from './src/db/database';
 import type { RootStackParamList, TabParamList } from './src/navigation';
 import { initNotificationsAsync } from './src/notifications';
 import { loadSettingsAsync } from './src/settings';
+import { settleMomentumAsync } from './src/gamification/engine';
 import AssignmentEditScreen from './src/screens/AssignmentEditScreen';
+import ProgressScreen from './src/screens/ProgressScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SubjectDetailScreen from './src/screens/SubjectDetailScreen';
 import SubjectsScreen from './src/screens/SubjectsScreen';
@@ -67,6 +69,7 @@ export default function App() {
       try {
         await getDb(); // open + migrate before any screen queries
         await loadSettingsAsync();
+        await settleMomentumAsync(); // lazy momentum/grace evaluation on open
         await initNotificationsAsync();
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -104,6 +107,7 @@ export default function App() {
           component={AssignmentEditScreen}
           options={{ presentation: 'modal' }}
         />
+        <Stack.Screen name="Progress" component={ProgressScreen} options={{ title: 'Progress' }} />
       </Stack.Navigator>
       <SparkBurst />
     </NavigationContainer>
