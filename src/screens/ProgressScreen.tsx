@@ -2,16 +2,15 @@
 // grace shields, and this-week totals from the ledger. Pushed from the
 // Spark pill — deliberately not a fourth tab.
 
+// The companion itself now lives large on Home — this screen stays the
+// numbers-and-shop peek behind the Spark pill.
+
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
-import Companion, { EnergyMeter } from '../components/Companion';
 import SparkShop from '../components/SparkShop';
-import { listOpenAssignmentsWithSubject } from '../db/database';
-import { dueStatus } from '../dates';
-import { deriveMood, stageForLevel, type CompanionMood } from '../gamification/companion';
 import {
   getProgressSummaryAsync,
   getWeekSummaryAsync,
@@ -20,9 +19,8 @@ import {
   type ProgressSummary,
   type WeekSummary,
 } from '../gamification/engine';
-import { onProgressChanged, onSpark } from '../gamification/events';
+import { onProgressChanged } from '../gamification/events';
 import { levelProgress } from '../gamification/levels';
-import { useSettings } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 
@@ -31,37 +29,17 @@ const RING_STROKE = 10;
 const RING_R = (RING_SIZE - RING_STROKE) / 2;
 const RING_C = 2 * Math.PI * RING_R;
 
-const MOOD_SUMMARY: Record<CompanionMood, string> = {
-  bright: 'feeling bright',
-  alert: 'keeping an eye on today',
-  dozing: 'snoozing — any add wakes them up',
-  celebrating: 'celebrating!',
-};
-
 export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [week, setWeek] = useState<WeekSummary | null>(null);
-  const [dayState, setDayState] = useState({ hasOverdue: false, hasDueToday: false });
-  const [celebrating, setCelebrating] = useState(false);
-  const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const settings = useSettings();
 
   const load = useCallback(async () => {
     await settleMomentumAsync();
-    const [p, w, open] = await Promise.all([
-      getProgressSummaryAsync(),
-      getWeekSummaryAsync(),
-      listOpenAssignmentsWithSubject(),
-    ]);
+    const [p, w] = await Promise.all([getProgressSummaryAsync(), getWeekSummaryAsync()]);
     setProgress(p);
     setWeek(w);
-    const statuses = open.map((a) => dueStatus(a));
-    setDayState({
-      hasOverdue: statuses.includes('overdue'),
-      hasDueToday: statuses.includes('today'),
-    });
   }, []);
 
   useFocusEffect(
@@ -71,45 +49,13 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
     }, [load]),
   );
 
-  useEffect(() => {
-    const off = onSpark(() => {
-      setCelebrating(true);
-      if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
-      celebrateTimer.current = setTimeout(() => setCelebrating(false), 2600);
-    });
-    return () => {
-      off();
-      if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
-    };
-  }, []);
-
   if (!progress) return <View style={styles.container} />;
 
   const lp = levelProgress(progress.lifetime);
   const toNext = lp.span - lp.into;
-  const mood = deriveMood({ progress, ...dayState, justAwarded: celebrating });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {settings.companion !== 'none' ? (
-        <View style={styles.companionBlock}>
-          <Companion
-            species={settings.companion}
-            mood={mood}
-            stage={stageForLevel(lp.level)}
-            size={140}
-            accessories={settings.accessories}
-          />
-          <Text style={styles.companionName} accessibilityLabel={`${settings.companionName} is ${MOOD_SUMMARY[mood]}`}>
-            {settings.companionName} is {MOOD_SUMMARY[mood]}
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.companionBlock}>
-          <EnergyMeter fraction={lp.fraction} width={220} />
-          <Text style={styles.companionName}>Energy toward level {lp.level + 1}</Text>
-        </View>
-      )}
       <View style={styles.heroCard}>
         <View
           style={styles.ringWrap}
@@ -215,8 +161,6 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  companionBlock: { alignItems: 'center', marginBottom: spacing.lg },
-  companionName: { color: colors.textMuted, fontSize: 14, fontWeight: '600', marginTop: spacing.sm },
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,

@@ -14,6 +14,14 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import Companion, { EnergyOrb } from '../components/Companion';
@@ -41,7 +49,7 @@ import {
   type Utterance,
 } from '../gamification/guidance';
 import { levelProgress } from '../gamification/levels';
-import { useSettings } from '../hooks';
+import { useCalmMotion, useSettings } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import { getSettingAsync, setSettingAsync, updateSettingsAsync } from '../settings';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
@@ -377,18 +385,74 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
   );
 }
 
-/** Full-bleed radial glow in the companion's tint. Static (drift lands in Phase 2). */
+/**
+ * Full-bleed radial glow in the companion's tint plus a few soft shapes on a
+ * slow parallax drift (wrapper transforms only; static under calm motion).
+ */
 function AmbientBackground({ tint }: { tint: string }) {
+  const calm = useCalmMotion();
   return (
-    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
-      <Defs>
-        <RadialGradient id="homeGlow" cx="50%" cy="28%" r="75%">
-          <Stop offset="0" stopColor={tint} stopOpacity={0.22} />
-          <Stop offset="1" stopColor={tint} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Rect x={0} y={0} width="100%" height="100%" fill="url(#homeGlow)" />
-    </Svg>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+        <Defs>
+          <RadialGradient id="homeGlow" cx="50%" cy="28%" r="75%">
+            <Stop offset="0" stopColor={tint} stopOpacity={0.22} />
+            <Stop offset="1" stopColor={tint} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+        <Rect x={0} y={0} width="100%" height="100%" fill="url(#homeGlow)" />
+      </Svg>
+      {!calm && DRIFT_SPECS.map((d, i) => <DriftShape key={i} spec={d} tint={tint} />)}
+    </View>
+  );
+}
+
+interface DriftSpec {
+  left: `${number}%`;
+  top: `${number}%`;
+  size: number;
+  durationMs: number;
+  dx: number;
+  dy: number;
+  opacity: number;
+}
+
+const DRIFT_SPECS: DriftSpec[] = [
+  { left: '8%', top: '12%', size: 90, durationMs: 11000, dx: 16, dy: 12, opacity: 0.08 },
+  { left: '70%', top: '8%', size: 60, durationMs: 9000, dx: -14, dy: 16, opacity: 0.1 },
+  { left: '78%', top: '46%', size: 110, durationMs: 13000, dx: -18, dy: -10, opacity: 0.06 },
+  { left: '4%', top: '58%', size: 70, durationMs: 10000, dx: 14, dy: -14, opacity: 0.08 },
+];
+
+function DriftShape({ spec, tint }: { spec: DriftSpec; tint: string }) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withRepeat(
+      withTiming(1, { duration: spec.durationMs, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    );
+    return () => cancelAnimation(t);
+  }, [t, spec.durationMs]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: spec.dx * t.value }, { translateY: spec.dy * t.value }],
+  }));
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          left: spec.left,
+          top: spec.top,
+          width: spec.size,
+          height: spec.size,
+          borderRadius: spec.size / 2,
+          backgroundColor: tint,
+          opacity: spec.opacity,
+        },
+        style,
+      ]}
+    />
   );
 }
 
