@@ -4,7 +4,7 @@
 // ramp tokens for ≥3:1 against card. Urgency is never color-only: the due
 // label text always carries the same information.
 
-import type { ThemeId } from '../types';
+import type { CompanionId, ThemeId } from '../types';
 
 export interface UrgencyRamp {
   /** >3 days out. */
@@ -310,6 +310,186 @@ const monoDark: ThemeColors = {
   statusBar: 'light',
 };
 
+// ---------- Companion signature palettes ----------
+// One per companion: choosing a sidekick dresses the whole app in its look
+// (the default `themeSource`). "None" keeps the quiet Slate palette.
+
+// Ember — Wisp's warm flame: toasted amber and campfire orange.
+
+const emberLight: ThemeColors = {
+  bg: '#FFF6EC',
+  card: '#FFFFFF',
+  border: '#F4DFC8',
+  text: '#3A2410',
+  textMuted: '#8F6A45',
+  primary: '#D9480F',
+  primaryText: '#FFFFFF',
+  danger: '#E03131',
+  overdue: '#E03131',
+  today: '#E8590C',
+  upcoming: '#7048E8',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#FCE9D4',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#845EF7' },
+  dayPhase: { morning: '#FFC078', evening: '#9775FA' },
+  statusBar: 'dark',
+};
+
+const emberDark: ThemeColors = {
+  bg: '#251507',
+  card: '#31200F',
+  border: '#4E351D',
+  text: '#F9ECDD',
+  textMuted: '#C89F73',
+  primary: '#FF922B',
+  primaryText: '#331602',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FF922B',
+  upcoming: '#9775FA',
+  done: '#51CF66',
+  spark: '#FFC94D',
+  highlight: '#4A3115',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#B197FC' },
+  dayPhase: { morning: '#C08A3E', evening: '#7048E8' },
+  statusBar: 'light',
+};
+
+// Meadow — Pip's sprout garden: fresh leafy greens.
+
+const meadowLight: ThemeColors = {
+  bg: '#F4FAEF',
+  card: '#FFFFFF',
+  border: '#DDEACF',
+  text: '#22301A',
+  textMuted: '#68804F',
+  primary: '#2F9E44',
+  primaryText: '#FFFFFF',
+  danger: '#E03131',
+  overdue: '#E03131',
+  today: '#E8590C',
+  upcoming: '#1971C2',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#E4F3D7',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#1971C2' },
+  dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
+  statusBar: 'dark',
+};
+
+const meadowDark: ThemeColors = {
+  bg: '#131B0E',
+  card: '#1D2916',
+  border: '#304226',
+  text: '#EAF3E2',
+  textMuted: '#A3BF90',
+  primary: '#69DB7C',
+  primaryText: '#0B2610',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FFA94D',
+  upcoming: '#74C0FC',
+  done: '#69DB7C',
+  spark: '#FFC94D',
+  highlight: '#2C4020',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#74C0FC' },
+  dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
+  statusBar: 'light',
+};
+
+// Dusk — Juno's twilight prowl: soft violet and rose.
+
+const duskLight: ThemeColors = {
+  bg: '#F9F5FD',
+  card: '#FFFFFF',
+  border: '#E8DBF2',
+  text: '#301B40',
+  textMuted: '#7F6795',
+  primary: '#9C36B5',
+  primaryText: '#FFFFFF',
+  danger: '#E03131',
+  overdue: '#E03131',
+  today: '#E8590C',
+  upcoming: '#6741D9',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#F1E4FA',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#AE3EC9', unit7: '#6741D9' },
+  dayPhase: { morning: '#FFC078', evening: '#9775FA' },
+  statusBar: 'dark',
+};
+
+const duskDark: ThemeColors = {
+  bg: '#1C1426',
+  card: '#271C33',
+  border: '#3E2F52',
+  text: '#F3ECFA',
+  textMuted: '#B5A1CC',
+  primary: '#DA77F2',
+  primaryText: '#2E0838',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FF922B',
+  upcoming: '#9775FA',
+  done: '#51CF66',
+  spark: '#FFC94D',
+  highlight: '#3A2A4E',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#E599F7', unit7: '#9775FA' },
+  dayPhase: { morning: '#B4713D', evening: '#7048E8' },
+  statusBar: 'light',
+};
+
+// Circuit — Unit-7's workshop: cool cyan and clean steel.
+
+const circuitLight: ThemeColors = {
+  bg: '#F0F7FA',
+  card: '#FFFFFF',
+  border: '#D3E5EC',
+  text: '#132832',
+  textMuted: '#587683',
+  primary: '#0B7285',
+  primaryText: '#FFFFFF',
+  danger: '#E03131',
+  overdue: '#E03131',
+  today: '#E8590C',
+  upcoming: '#1971C2',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#D9F1F7',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#0C8599' },
+  dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
+  statusBar: 'dark',
+};
+
+const circuitDark: ThemeColors = {
+  bg: '#0D161B',
+  card: '#152229',
+  border: '#263B45',
+  text: '#E4F1F6',
+  textMuted: '#8FB0BD',
+  primary: '#3BC9DB',
+  primaryText: '#04242B',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FFA94D',
+  upcoming: '#74C0FC',
+  done: '#51CF66',
+  spark: '#FFD43B',
+  highlight: '#173A45',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFD43B', pip: '#A9E34B', juno: '#F06BA8', unit7: '#66D9E8' },
+  dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
+  statusBar: 'light',
+};
+
 export const PALETTES: Record<ThemeId, ThemePalette> = {
   pop: { light: popLight, dark: popDark },
   slate: { light: slateLight, dark: slateDark },
@@ -317,4 +497,21 @@ export const PALETTES: Record<ThemeId, ThemePalette> = {
   neon: { light: neon, dark: neon },
   paper: { light: paperLight, dark: paperDark },
   mono: { light: monoLight, dark: monoDark },
+  ember: { light: emberLight, dark: emberDark },
+  meadow: { light: meadowLight, dark: meadowDark },
+  dusk: { light: duskLight, dark: duskDark },
+  circuit: { light: circuitLight, dark: circuitDark },
+};
+
+/**
+ * Each companion's signature palette — the default theme driver (settings
+ * `themeSource: 'companion'`). "None" keeps the quiet Slate look. Manual
+ * theme picks (`themeSource: 'manual'`) override this map entirely.
+ */
+export const COMPANION_THEME: Record<CompanionId, ThemeId> = {
+  wisp: 'ember',
+  pip: 'meadow',
+  juno: 'dusk',
+  unit7: 'circuit',
+  none: 'slate',
 };

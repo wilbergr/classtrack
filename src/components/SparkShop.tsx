@@ -30,7 +30,9 @@ export default function SparkShop({ balance }: Props) {
     async (item: ShopItem) => {
       hapticSelect();
       if (item.kind === 'theme' && item.themeId) {
-        await updateSettingsAsync({ themeId: item.themeId });
+        // Equipping a bought theme pins it (overrides the sidekick's look
+        // until the user re-picks "Match sidekick" in Settings).
+        await updateSettingsAsync({ themeSource: 'manual', themeId: item.themeId });
       } else if (item.kind === 'celebration' && item.celebration) {
         await updateSettingsAsync({ celebrationStyle: item.celebration });
       } else if (item.kind === 'accessory') {
@@ -59,7 +61,9 @@ export default function SparkShop({ balance }: Props) {
   );
 
   const isEquipped = (item: ShopItem): boolean => {
-    if (item.kind === 'theme') return settings.themeId === item.themeId;
+    if (item.kind === 'theme') {
+      return settings.themeSource === 'manual' && settings.themeId === item.themeId;
+    }
     if (item.kind === 'celebration') return settings.celebrationStyle === item.celebration;
     return settings.accessories.includes(accessoryId(item.key));
   };

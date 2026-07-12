@@ -22,7 +22,15 @@ import {
   refreshDailyDigestsAsync,
 } from '../notifications';
 import { updateSettingsAsync } from '../settings';
-import { radius, spacing, THEME_META, useTheme, type ThemeColors } from '../theme';
+import {
+  COMPANION_THEME,
+  PALETTES,
+  radius,
+  spacing,
+  THEME_META,
+  useTheme,
+  type ThemeColors,
+} from '../theme';
 import type { CompanionId, Vibe, VoicePackId } from '../types';
 
 type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unknown';
@@ -60,7 +68,7 @@ const COMPANION_OPTIONS: { id: CompanionId; label: string }[] = [
 ];
 
 export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const settings = useSettings();
   const [permission, setPermission] = useState<PermissionState>('unknown');
@@ -114,13 +122,33 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
       <View style={styles.card}>
         <Text style={styles.fieldLabel}>Theme</Text>
         <View style={styles.chipWrap}>
+          {(() => {
+            const signature = PALETTES[COMPANION_THEME[settings.companion]];
+            const accent = (dark ? signature.dark : signature.light).primary;
+            const selected = settings.themeSource === 'companion';
+            return (
+              <Pressable
+                onPress={() => updateSettingsAsync({ themeSource: 'companion' })}
+                style={[styles.chip, selected && styles.chipSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <View style={[styles.swatch, { backgroundColor: accent }]} />
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  Match sidekick
+                </Text>
+              </Pressable>
+            );
+          })()}
           {THEME_META.map((t) => {
             const available = t.free || unlocked.has(`theme:${t.id}`);
-            const selected = settings.themeId === t.id;
+            const selected = settings.themeSource === 'manual' && settings.themeId === t.id;
             return (
               <Pressable
                 key={t.id}
-                onPress={() => available && updateSettingsAsync({ themeId: t.id })}
+                onPress={() =>
+                  available && updateSettingsAsync({ themeSource: 'manual', themeId: t.id })
+                }
                 disabled={!available}
                 style={[
                   styles.chip,
@@ -138,7 +166,11 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
             );
           })}
         </View>
-        <Text style={styles.hint}>Locked themes unlock in the Spark shop (tap your Spark pill).</Text>
+        <Text style={styles.hint}>
+          Match sidekick dresses the whole app in your sidekick's colors and follows it if you
+          switch. Pick a theme to set your own look instead; locked ones unlock in the Spark shop
+          (tap your Spark pill).
+        </Text>
 
         <Text style={styles.fieldLabel}>Celebration size</Text>
         <View style={styles.chipWrap}>
@@ -249,6 +281,11 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
               maxLength={24}
             />
           </>
+        )}
+        {settings.themeSource === 'companion' && (
+          <Text style={styles.hint}>
+            Each sidekick brings its own signature colors — the app changes outfit with it.
+          </Text>
         )}
       </View>
 

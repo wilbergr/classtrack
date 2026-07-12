@@ -5,10 +5,10 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { useSettings } from '../hooks';
-import { PALETTES, type ThemeColors } from './palettes';
+import { COMPANION_THEME, PALETTES, type ThemeColors } from './palettes';
 
 export type { ThemeColors } from './palettes';
-export { PALETTES } from './palettes';
+export { COMPANION_THEME, PALETTES } from './palettes';
 export * from './tokens';
 
 interface ThemeValue {
@@ -27,7 +27,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const scheme = useColorScheme();
   const wantDark =
     settings.darkMode === 'on' || (settings.darkMode === 'system' && scheme === 'dark');
-  const palette = PALETTES[settings.themeId] ?? PALETTES.pop;
+  // Companion-first: the chosen sidekick's signature palette drives the app
+  // look unless the user has pinned a manual theme.
+  const paletteId =
+    settings.themeSource === 'manual' ? settings.themeId : COMPANION_THEME[settings.companion];
+  const palette = PALETTES[paletteId] ?? PALETTES.pop;
   const colors = wantDark ? palette.dark : palette.light;
 
   const value = useMemo<ThemeValue>(
