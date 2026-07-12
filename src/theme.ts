@@ -16,6 +16,30 @@ export const colors = {
   highlight: '#E3EBFE', // freshly-captured row flash
 };
 
+// Theme catalog metadata (full palettes land with the theme provider).
+// Pop and Slate are free; the rest are early Spark unlocks.
+export const THEME_META: {
+  id: 'pop' | 'slate' | 'midnight' | 'neon' | 'paper' | 'mono';
+  label: string;
+  accent: string;
+  free: boolean;
+}[] = [
+  { id: 'pop', label: 'Pop', accent: '#EC4899', free: true },
+  { id: 'slate', label: 'Slate', accent: '#3B6FF5', free: true },
+  { id: 'midnight', label: 'Midnight', accent: '#5B8CFF', free: false },
+  { id: 'neon', label: 'Neon', accent: '#22D3EE', free: false },
+  { id: 'paper', label: 'Paper', accent: '#D97706', free: false },
+  { id: 'mono', label: 'Mono', accent: '#111827', free: false },
+];
+
+// Base tint per companion species (recolored per-theme once themes land).
+export const companionTints = {
+  wisp: '#F0B429',
+  pip: '#3B6FF5',
+  juno: '#8B5CF6',
+  unit7: '#64748B',
+};
+
 // Palette offered when creating a subject.
 export const subjectPalette = [
   '#3B6FF5', // blue

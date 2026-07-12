@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import AssignmentRow from '../components/AssignmentRow';
+import CompanionHeader from '../components/CompanionHeader';
 import EmptyState from '../components/EmptyState';
 import QuickAddSheet from '../components/QuickAddSheet';
 import SparkPill from '../components/SparkPill';
@@ -27,14 +28,20 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
   const [hasSubjects, setHasSubjects] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [highlightId, setHighlightId] = useState<number | null>(null);
+  const [dayState, setDayState] = useState({ hasOverdue: false, hasDueToday: false });
   const calm = useCalmMotion();
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useLayoutEffect(() => {
     navigation.setOptions({
-      headerRight: () => <SparkPill onPress={() => navigation.navigate('Progress')} />,
+      headerRight: () => (
+        <View style={styles.headerRow}>
+          <CompanionHeader hasOverdue={dayState.hasOverdue} hasDueToday={dayState.hasDueToday} />
+          <SparkPill onPress={() => navigation.navigate('Progress')} />
+        </View>
+      ),
     });
-  }, [navigation]);
+  }, [navigation, dayState]);
 
   // Flash freshly-captured assignments when they land in the list.
   useEffect(() => {
@@ -72,6 +79,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
       ].filter((s) => s.data.length > 0),
     );
     setHasSubjects(subjects.length > 0);
+    setDayState({ hasOverdue: overdue.length > 0, hasDueToday: today.length > 0 });
     setLoaded(true);
   }, []);
 
@@ -180,6 +188,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   listContent: { paddingTop: spacing.md, paddingBottom: 96, flexGrow: 1 },
   sectionHeader: {
     flexDirection: 'row',
