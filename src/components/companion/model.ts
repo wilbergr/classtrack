@@ -1,8 +1,13 @@
 // Rig v2 model: a pure parametric description of the companion —
 // (species, stage, mood, theme) → layers of primitive shapes plus animation
-// params. Renderers (SVG today, Skia later) draw the same model; all
-// continuous motion is applied by the renderer as wrapper transforms, never
-// as per-frame SVG prop changes (the New-Architecture-safe pattern).
+// params. The renderer (SkiaRig) draws the model; all continuous motion is
+// applied as wrapper/Group transforms, never as per-frame SVG prop changes
+// (the New-Architecture-safe pattern).
+//
+// Anatomy (v3, "full little character"): every species is a chibi cartoon —
+// an oversized head (~half the rig), a small rounded torso, stubby limbs and
+// big white-sclera eyes with wandering pupils + a specular highlight. All in
+// a 100×100 space, feet on the ground line ~y 88, shadow at y 94.
 
 import type { CompanionMood } from '../../gamification/companion';
 import type { ThemeColors } from '../../theme';
@@ -50,6 +55,7 @@ export type RigLayerId =
   | 'shadow'
   | 'aura'
   | 'back'
+  | 'arms'
   | 'body'
   | 'markings'
   | 'face'
@@ -64,7 +70,7 @@ export interface RigLayer {
   breathAmp: number;
   /** Phase offset (0..1) — features lag the body for follow-through. */
   breathPhase: number;
-  /** Gentle rotation amplitude in degrees (leaves, flames, antennae). */
+  /** Gentle rotation amplitude in degrees (leaves, flames, tails, arms). */
   sway?: number;
   /** Slow opacity/scale pulse instead of squash (auras, glows). */
   pulse?: boolean;
@@ -102,12 +108,14 @@ export function stageScale(stage: number): number {
   return 1.08;
 }
 
+const WHITE = '#FFFFFF';
+
 function bodyGradient(tint: string): RadialFill {
   return {
     type: 'radial',
     cx: 42,
-    cy: 44,
-    r: 58,
+    cy: 34,
+    r: 62,
     stops: [
       { offset: 0, color: lighten(tint, 0.32) },
       { offset: 0.55, color: tint },
@@ -130,16 +138,16 @@ function starPath(cx: number, cy: number, r: number): string {
   );
 }
 
-/** Luminous-stage shimmer: tiny sparkles over the body, gently pulsing. */
+/** Luminous-stage shimmer: tiny sparkles over the character, gently pulsing. */
 function shimmerLayer(tint: string): RigLayer {
   const spark = lighten(tint, 0.6);
   return {
     id: 'shimmer',
     shapes: [
-      { kind: 'path', d: starPath(36, 42, 3), fill: spark, opacity: 0.8 },
-      { kind: 'path', d: starPath(65, 36, 2.4), fill: spark, opacity: 0.7 },
-      { kind: 'path', d: starPath(70, 76, 2.8), fill: spark, opacity: 0.75 },
-      { kind: 'path', d: starPath(31, 78, 2.2), fill: spark, opacity: 0.65 },
+      { kind: 'path', d: starPath(33, 30, 3), fill: spark, opacity: 0.8 },
+      { kind: 'path', d: starPath(68, 24, 2.4), fill: spark, opacity: 0.7 },
+      { kind: 'path', d: starPath(70, 72, 2.8), fill: spark, opacity: 0.75 },
+      { kind: 'path', d: starPath(30, 76, 2.2), fill: spark, opacity: 0.65 },
     ],
     breathAmp: 0.022,
     breathPhase: 0,
@@ -160,12 +168,12 @@ function auraLayer(tint: string, stage: number): RigLayer {
   const ring = (r: number, opacity: number): RigShape => ({
     kind: 'circle',
     cx: 50,
-    cy: 56,
+    cy: 54,
     r,
     fill: {
       type: 'radial',
       cx: 50,
-      cy: 56,
+      cy: 54,
       r,
       stops: [
         { offset: 0.55, color: tint, opacity: 0 },
@@ -186,8 +194,7 @@ function auraLayer(tint: string, stage: number): RigLayer {
 }
 
 /** Closed eyes (gentle arcs) / celebrating (happy arcs) drawn in the face layer. */
-function eyeArcs(y: number, color: string, happy: boolean): RigShape[] {
-  const xs = [41, 59];
+function eyeArcs(xs: [number, number], y: number, color: string, happy: boolean): RigShape[] {
   return xs.map((x): RigShape => ({
     kind: 'path',
     d: happy
@@ -200,23 +207,19 @@ function eyeArcs(y: number, color: string, happy: boolean): RigShape[] {
   }));
 }
 
-function roundPupils(y: number, r: number, color: string): RigShape[] {
-  return [41, 59].map((x): RigShape => ({ kind: 'circle', cx: x, cy: y, r, fill: color }));
-}
-
 function mouthShape(y: number, mood: CompanionMood, color: string): RigShape {
   if (mood === 'dozing') {
-    return { kind: 'line', x1: 46, y1: y, x2: 54, y2: y, stroke: color, strokeWidth: 2, strokeLinecap: 'round' };
+    return { kind: 'line', x1: 46.5, y1: y, x2: 53.5, y2: y, stroke: color, strokeWidth: 2, strokeLinecap: 'round' };
   }
   if (mood === 'alert') {
-    return { kind: 'circle', cx: 50, cy: y, r: 3, fill: color };
+    return { kind: 'circle', cx: 50, cy: y, r: 2.6, fill: color };
   }
   if (mood === 'celebrating') {
-    return { kind: 'path', d: `M 42 ${y - 2} Q 50 ${y + 8} 58 ${y - 2} Z`, fill: color };
+    return { kind: 'path', d: `M 43.5 ${y - 1.5} Q 50 ${y + 7} 56.5 ${y - 1.5} Z`, fill: color };
   }
   return {
     kind: 'path',
-    d: `M 44 ${y} Q 50 ${y + 5} 56 ${y}`,
+    d: `M 45 ${y} Q 50 ${y + 4.5} 55 ${y}`,
     stroke: color,
     strokeWidth: 2.4,
     strokeLinecap: 'round',
@@ -226,8 +229,8 @@ function mouthShape(y: number, mood: CompanionMood, color: string): RigShape {
 
 function blush(y: number, color: string): RigShape[] {
   return [
-    { kind: 'ellipse', cx: 33, cy: y, rx: 4.5, ry: 2.6, fill: color, opacity: 0.28 },
-    { kind: 'ellipse', cx: 67, cy: y, rx: 4.5, ry: 2.6, fill: color, opacity: 0.28 },
+    { kind: 'ellipse', cx: 35, cy: y, rx: 4.2, ry: 2.4, fill: color, opacity: 0.28 },
+    { kind: 'ellipse', cx: 65, cy: y, rx: 4.2, ry: 2.4, fill: color, opacity: 0.28 },
   ];
 }
 
@@ -236,7 +239,7 @@ function sleepZs(color: string): RigShape[] {
   return [
     {
       kind: 'path',
-      d: 'M 70 20 L 79 20 L 70 29 L 79 29',
+      d: 'M 76 26 L 85 26 L 76 35 L 85 35',
       stroke: color,
       strokeWidth: 2.4,
       strokeLinecap: 'round',
@@ -244,7 +247,7 @@ function sleepZs(color: string): RigShape[] {
     },
     {
       kind: 'path',
-      d: 'M 80 8 L 87 8 L 80 15 L 87 15',
+      d: 'M 84 13 L 91 13 L 84 20 L 91 20',
       stroke: color,
       strokeWidth: 2,
       strokeLinecap: 'round',
@@ -254,16 +257,41 @@ function sleepZs(color: string): RigShape[] {
   ];
 }
 
-/** Shop accessories, species-generic (same anchors as the v1 rig). */
+/** Stubby cartoon arms: thick round strokes from the shoulders, down-out. */
+function stubbyArms(color: string, shoulderY: number, width = 6.5): RigLayer {
+  return {
+    id: 'arms',
+    shapes: [
+      { kind: 'line', x1: 36, y1: shoulderY, x2: 27, y2: shoulderY + 8, stroke: color, strokeWidth: width, strokeLinecap: 'round' },
+      { kind: 'line', x1: 64, y1: shoulderY, x2: 73, y2: shoulderY + 8, stroke: color, strokeWidth: width, strokeLinecap: 'round' },
+    ],
+    breathAmp: 0.03,
+    breathPhase: 0.3,
+    sway: 2,
+  };
+}
+
+/** Little rounded feet planted on the ground line. */
+function feet(color: string): RigShape[] {
+  return [
+    { kind: 'ellipse', cx: 42, cy: 87.5, rx: 5.5, ry: 3.5, fill: color },
+    { kind: 'ellipse', cx: 58, cy: 87.5, rx: 5.5, ry: 3.5, fill: color },
+  ];
+}
+
+/**
+ * Shop accessories, species-generic; anchored to the shared neckline
+ * (head-torso seam ≈ y 57) and crown (y ≈ 5).
+ */
 function accessoryLayer(keys: string[], c: ThemeColors): RigLayer | null {
   const shapes: RigShape[] = [];
   if (keys.includes('halo')) {
     shapes.push({
       kind: 'ellipse',
       cx: 50,
-      cy: 7,
-      rx: 16,
-      ry: 4.5,
+      cy: 5,
+      rx: 15,
+      ry: 4,
       stroke: c.spark,
       strokeWidth: 3,
       fill: 'none',
@@ -271,54 +299,70 @@ function accessoryLayer(keys: string[], c: ThemeColors): RigLayer | null {
   }
   if (keys.includes('scarf')) {
     shapes.push(
-      { kind: 'path', d: 'M 30 80 Q 50 90 70 80 L 70 87 Q 50 96 30 87 Z', fill: c.danger },
-      { kind: 'rect', x: 60, y: 82, width: 8, height: 14, rx: 3, fill: c.danger },
+      { kind: 'path', d: 'M 35 55 Q 50 63 65 55 L 65 62 Q 50 70 35 62 Z', fill: c.danger },
+      { kind: 'rect', x: 57, y: 59, width: 7, height: 13, rx: 3, fill: c.danger },
     );
   }
   if (keys.includes('bowtie')) {
     shapes.push(
-      { kind: 'path', d: 'M 50 84 L 38 78 L 38 90 Z', fill: c.primary },
-      { kind: 'path', d: 'M 50 84 L 62 78 L 62 90 Z', fill: c.primary },
-      { kind: 'circle', cx: 50, cy: 84, r: 3, fill: c.primary },
+      { kind: 'path', d: 'M 50 59 L 39 53 L 39 65 Z', fill: c.primary },
+      { kind: 'path', d: 'M 50 59 L 61 53 L 61 65 Z', fill: c.primary },
+      { kind: 'circle', cx: 50, cy: 59, r: 3, fill: c.primary },
     );
   }
   if (shapes.length === 0) return null;
   return { id: 'accessory', shapes, breathAmp: 0.02, breathPhase: 0.05 };
 }
 
-// ---------- species shells ----------
+// ---------- the cartoon face (organic species) ----------
 
 interface FaceSpec {
+  /** Eye centers, symmetric on the head. */
+  eyeXs: [number, number];
   eyeY: number;
-  eyeColor: string;
   mouthY: number;
-  mouthColor: string;
+  /** Deep species-dark used for pupils, arcs and the mouth. */
+  ink: string;
   blushY?: number;
-  blushColor?: string;
 }
 
-/** Face + pupils shared across the organic species. */
-function organicFace(
+/**
+ * Big-cartoon-eyes face shared by the organic species: white sclera in the
+ * face layer, wandering pupil + specular highlight in the pupil group.
+ * Hatchlings get even bigger eyes; blush arrives at Grown.
+ */
+function cuteFace(
   i: RigInputs,
   spec: FaceSpec,
   extra: RigShape[] = [],
 ): { face: RigLayer; pupils: RigModel['pupils'] } {
   const shapes: RigShape[] = [...extra];
   let pupils: RigModel['pupils'] = null;
-  // Hatchlings get oversized eyes; the richer face set arrives at Grown.
-  const baseR = i.stage <= 1 ? 6 : 4.5;
+  const big = i.stage <= 1;
+  const scleraRx = big ? 7.2 : 6;
+  const scleraRy = big ? 8.4 : 7;
+  const pupilR = (big ? 4.6 : 3.9) + (i.mood === 'alert' ? 0.6 : 0);
+  const [lx, rx] = spec.eyeXs;
+
   if (i.eyesClosed) {
-    shapes.push(...eyeArcs(spec.eyeY, spec.eyeColor, false));
+    shapes.push(...eyeArcs(spec.eyeXs, spec.eyeY, spec.ink, false));
   } else if (i.mood === 'celebrating') {
-    shapes.push(...eyeArcs(spec.eyeY, spec.eyeColor, true));
+    shapes.push(...eyeArcs(spec.eyeXs, spec.eyeY, spec.ink, true));
   } else {
-    const r = i.mood === 'alert' ? baseR + 1 : baseR;
-    pupils = { shapes: roundPupils(spec.eyeY, r, spec.eyeColor), range: 2.2 };
+    shapes.push(
+      { kind: 'ellipse', cx: lx, cy: spec.eyeY, rx: scleraRx, ry: scleraRy, fill: WHITE },
+      { kind: 'ellipse', cx: rx, cy: spec.eyeY, rx: scleraRx, ry: scleraRy, fill: WHITE },
+    );
+    const pupilShapes: RigShape[] = [lx, rx].flatMap((x): RigShape[] => [
+      { kind: 'circle', cx: x, cy: spec.eyeY + 0.6, r: pupilR, fill: spec.ink },
+      { kind: 'circle', cx: x + 1.4, cy: spec.eyeY - 1.2, r: 1.5, fill: WHITE, opacity: 0.95 },
+    ]);
+    pupils = { shapes: pupilShapes, range: 2.2 };
   }
-  if (i.stage >= 3 && spec.blushY && spec.blushColor) {
-    shapes.push(...blush(spec.blushY, spec.blushColor));
+  if (i.stage >= 3 && spec.blushY != null) {
+    shapes.push(...blush(spec.blushY, WHITE));
   }
-  shapes.push(mouthShape(spec.mouthY, i.mood, spec.mouthColor));
+  shapes.push(mouthShape(spec.mouthY, i.mood, spec.ink));
   if (i.mood === 'dozing') shapes.push(...sleepZs(i.colors.textMuted));
   return {
     face: { id: 'face', shapes, breathAmp: 0.015, breathPhase: 0.22 },
@@ -326,16 +370,20 @@ function organicFace(
   };
 }
 
+// ---------- species shells ----------
+
 function wispLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils'] } {
   const tint = i.colors.companion.wisp;
+  const ink = darken(tint, 0.72);
   const layers: RigLayer[] = [];
 
+  // Side flames flank the head from Sprout on.
   if (i.stage >= 2) {
     layers.push({
       id: 'back',
       shapes: [
-        { kind: 'path', d: 'M 16 66 C 12 56 16 48 22 42 C 22 52 24 58 28 64 Z', fill: darken(tint, 0.06), opacity: 0.8 },
-        { kind: 'path', d: 'M 84 66 C 88 56 84 48 78 42 C 78 52 76 58 72 64 Z', fill: darken(tint, 0.06), opacity: 0.8 },
+        { kind: 'path', d: 'M 28 44 C 22 36 24 26 30 20 C 29 30 31 37 36 43 Z', fill: darken(tint, 0.06), opacity: 0.8 },
+        { kind: 'path', d: 'M 72 44 C 78 36 76 26 70 20 C 71 30 69 37 64 43 Z', fill: darken(tint, 0.06), opacity: 0.8 },
       ],
       breathAmp: 0.03,
       breathPhase: 0.4,
@@ -343,65 +391,73 @@ function wispLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
     });
   }
 
+  if (i.stage >= 2) layers.push(stubbyArms(darken(tint, 0.06), 63));
+
+  // Flame-teardrop head over a small round flame body; Wisp floats, so a
+  // little tail flame flickers where feet would be.
   const bodyShapes: RigShape[] = [
     {
       kind: 'path',
-      d: 'M 50 8 C 66 26 78 40 78 58 C 78 78 65 92 50 92 C 35 92 22 78 22 58 C 22 40 34 26 50 8 Z',
+      d: 'M 50 6 C 60 16 70 24 70 36 C 70 49 61 57 50 57 C 39 57 30 49 30 36 C 30 24 40 16 50 6 Z',
       fill: bodyFill(tint, i.stage),
     },
+    // Torso tucks up under the head so the silhouette reads as one body.
+    { kind: 'ellipse', cx: 50, cy: 69, rx: 14.5, ry: 13, fill: bodyFill(tint, i.stage) },
   ];
   if (i.stage >= 2) {
-    // Rim light along the upper left.
-    bodyShapes.push({
-      kind: 'path',
-      d: 'M 41 20 C 33 30 27 40 26 52',
-      stroke: lighten(tint, 0.5),
-      strokeWidth: 3,
-      strokeLinecap: 'round',
-      fill: 'none',
-      opacity: 0.7,
-    });
+    bodyShapes.push(
+      // Rim light along the head's upper left.
+      {
+        kind: 'path',
+        d: 'M 41 16 C 35 22 31 29 31 36',
+        stroke: lighten(tint, 0.5),
+        strokeWidth: 3,
+        strokeLinecap: 'round',
+        fill: 'none',
+        opacity: 0.7,
+      },
+      { kind: 'ellipse', cx: 50, cy: 72, rx: 8, ry: 6, fill: WHITE, opacity: 0.35 },
+    );
   }
-  bodyShapes.push({ kind: 'ellipse', cx: 50, cy: 64, rx: 17, ry: 15, fill: '#FFFFFF', opacity: 0.4 });
   layers.push({ id: 'body', shapes: bodyShapes, breathAmp: 0.022, breathPhase: 0 });
 
   if (i.stage >= 3) {
     layers.push({
       id: 'markings',
       shapes: [
-        { kind: 'path', d: 'M 34 38 C 32 44 31 50 32 56', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
-        { kind: 'path', d: 'M 66 38 C 68 44 69 50 68 56', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
+        { kind: 'path', d: 'M 40 63 C 39 67 39 72 40 76', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
+        { kind: 'path', d: 'M 60 63 C 61 67 61 72 60 76', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
       ],
       breathAmp: 0.022,
       breathPhase: 0,
     });
   }
 
+  // Tail flame (always) + crown-flame at Radiant; Luminous lights a tongue.
+  const front: RigShape[] = [
+    { kind: 'path', d: 'M 50 81 C 55 85 53 91 50 94 C 47 91 45 85 50 81 Z', fill: lighten(tint, 0.2), opacity: 0.95 },
+  ];
   if (i.stage >= 4) {
-    // Crown-flame; Luminous grows it and lights an inner tongue.
-    const crown: RigShape[] = [
-      {
-        kind: 'path',
-        d: i.stage >= 5
-          ? 'M 50 0 C 56 6 58 12 54 17 C 52 13 48 13 46 17 C 42 12 44 6 50 0 Z'
-          : 'M 50 2 C 54 7 55 11 52 15 C 50 12 48 12 47 15 C 45 11 46 7 50 2 Z',
-        fill: lighten(tint, 0.2),
-        opacity: 0.9,
-      },
-    ];
+    front.push({
+      kind: 'path',
+      d: i.stage >= 5
+        ? 'M 50 0 C 56 5 58 11 54 16 C 52 12 48 12 46 16 C 42 11 44 5 50 0 Z'
+        : 'M 50 1 C 54 6 55 10 52 14 C 50 11 48 11 47 14 C 45 10 46 6 50 1 Z',
+      fill: lighten(tint, 0.2),
+      opacity: 0.9,
+    });
     if (i.stage >= 5) {
-      crown.push({ kind: 'ellipse', cx: 50, cy: 10, rx: 2.4, ry: 4, fill: lighten(tint, 0.55), opacity: 0.9 });
+      front.push({ kind: 'ellipse', cx: 50, cy: 9, rx: 2.4, ry: 4, fill: lighten(tint, 0.55), opacity: 0.9 });
     }
-    layers.push({ id: 'front', shapes: crown, breathAmp: 0.026, breathPhase: 0.35, sway: 3 });
   }
+  layers.push({ id: 'front', shapes: front, breathAmp: 0.026, breathPhase: 0.35, sway: 3 });
 
-  const { face, pupils } = organicFace(i, {
-    eyeY: 58,
-    eyeColor: i.colors.text,
-    mouthY: 70,
-    mouthColor: i.colors.text,
-    blushY: 65,
-    blushColor: '#FFFFFF',
+  const { face, pupils } = cuteFace(i, {
+    eyeXs: [42, 58],
+    eyeY: 36,
+    mouthY: 47,
+    ink,
+    blushY: 43,
   });
   layers.push(face);
   return { layers, pupils };
@@ -409,18 +465,25 @@ function wispLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
 
 function pipLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils'] } {
   const tint = i.colors.companion.pip;
+  const ink = darken(tint, 0.72);
   const layers: RigLayer[] = [];
 
+  if (i.stage >= 2) layers.push(stubbyArms(darken(tint, 0.04), 63, 7));
+
+  // Big round head on a round tummy, little feet; the tummy tucks up under
+  // the head so the silhouette reads as one body.
   const bodyShapes: RigShape[] = [
-    { kind: 'ellipse', cx: 50, cy: 59, rx: 33, ry: 31, fill: bodyFill(tint, i.stage) },
-    { kind: 'ellipse', cx: 38, cy: 42, rx: 9, ry: 6, fill: '#FFFFFF', opacity: 0.3 },
+    { kind: 'circle', cx: 50, cy: 33, r: 21, fill: bodyFill(tint, i.stage) },
+    { kind: 'ellipse', cx: 50, cy: 69, rx: 16, ry: 15, fill: bodyFill(tint, i.stage) },
+    ...feet(darken(tint, 0.12)),
+    { kind: 'ellipse', cx: 42, cy: 24, rx: 6, ry: 4, fill: WHITE, opacity: 0.3 },
   ];
   if (i.stage >= 2) {
     bodyShapes.push(
-      { kind: 'ellipse', cx: 50, cy: 70, rx: 16, ry: 11, fill: lighten(tint, 0.28), opacity: 0.55 },
+      { kind: 'ellipse', cx: 50, cy: 74, rx: 9, ry: 7, fill: lighten(tint, 0.28), opacity: 0.55 },
       {
         kind: 'path',
-        d: 'M 27 44 C 24 50 23 56 24 63',
+        d: 'M 35 22 C 32 26 30 31 30 36',
         stroke: lighten(tint, 0.5),
         strokeWidth: 3,
         strokeLinecap: 'round',
@@ -435,8 +498,8 @@ function pipLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
     layers.push({
       id: 'markings',
       shapes: [
-        { kind: 'circle', cx: 31, cy: 66, r: 4.5, fill: '#FFFFFF', opacity: 0.35 },
-        { kind: 'circle', cx: 69, cy: 66, r: 4.5, fill: '#FFFFFF', opacity: 0.35 },
+        { kind: 'circle', cx: 37, cy: 68, r: 3.5, fill: WHITE, opacity: 0.35 },
+        { kind: 'circle', cx: 63, cy: 68, r: 3.5, fill: WHITE, opacity: 0.35 },
       ],
       breathAmp: 0.024,
       breathPhase: 0,
@@ -444,38 +507,37 @@ function pipLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
   }
 
   if (i.stage >= 2) {
-    // The sprout; at Radiant it blooms, at Luminous a second bud joins in.
+    // The head-sprout; at Radiant it blooms, at Luminous a second bud joins.
     const sprout: RigShape[] = [
-      { kind: 'line', x1: 50, y1: 28, x2: 50, y2: 16, stroke: darken(tint, 0.1), strokeWidth: 2.5, strokeLinecap: 'round' },
-      { kind: 'ellipse', cx: 56, cy: 13, rx: 6.5, ry: 4, fill: i.colors.done },
-      { kind: 'ellipse', cx: 45, cy: 15, rx: 4.5, ry: 3, fill: i.colors.done, opacity: 0.85 },
+      { kind: 'line', x1: 50, y1: 13, x2: 50, y2: 6, stroke: darken(tint, 0.1), strokeWidth: 2.5, strokeLinecap: 'round' },
+      { kind: 'ellipse', cx: 55.5, cy: 4.5, rx: 5.5, ry: 3.5, fill: i.colors.done },
+      { kind: 'ellipse', cx: 45.5, cy: 6, rx: 4, ry: 2.8, fill: i.colors.done, opacity: 0.85 },
     ];
     if (i.stage >= 4) {
       const petal = lighten(tint, 0.35);
       sprout.push(
-        { kind: 'circle', cx: 50, cy: 9, r: 3.2, fill: petal },
-        { kind: 'circle', cx: 46, cy: 12, r: 3.2, fill: petal },
-        { kind: 'circle', cx: 54, cy: 12, r: 3.2, fill: petal },
-        { kind: 'circle', cx: 50, cy: 12, r: 2.2, fill: i.colors.spark },
+        { kind: 'circle', cx: 50, cy: 2.8, r: 2.8, fill: petal },
+        { kind: 'circle', cx: 46.4, cy: 5.4, r: 2.8, fill: petal },
+        { kind: 'circle', cx: 53.6, cy: 5.4, r: 2.8, fill: petal },
+        { kind: 'circle', cx: 50, cy: 4.8, r: 2, fill: i.colors.spark },
       );
     }
     if (i.stage >= 5) {
       sprout.push(
-        { kind: 'line', x1: 58, y1: 22, x2: 63, y2: 14, stroke: darken(tint, 0.1), strokeWidth: 2, strokeLinecap: 'round' },
-        { kind: 'circle', cx: 64, cy: 12, r: 2.6, fill: lighten(tint, 0.35) },
-        { kind: 'circle', cx: 64, cy: 12, r: 1.4, fill: i.colors.spark },
+        { kind: 'line', x1: 56, y1: 11, x2: 61, y2: 5, stroke: darken(tint, 0.1), strokeWidth: 2, strokeLinecap: 'round' },
+        { kind: 'circle', cx: 62, cy: 3.6, r: 2.6, fill: lighten(tint, 0.35) },
+        { kind: 'circle', cx: 62, cy: 3.6, r: 1.4, fill: i.colors.spark },
       );
     }
     layers.push({ id: 'front', shapes: sprout, breathAmp: 0.02, breathPhase: 0.3, sway: 3 });
   }
 
-  const { face, pupils } = organicFace(i, {
-    eyeY: 55,
-    eyeColor: '#FFFFFF',
-    mouthY: 68,
-    mouthColor: '#FFFFFF',
-    blushY: 61,
-    blushColor: '#FFFFFF',
+  const { face, pupils } = cuteFace(i, {
+    eyeXs: [42, 58],
+    eyeY: 34,
+    mouthY: 45,
+    ink,
+    blushY: 41,
   });
   layers.push(face);
   return { layers, pupils };
@@ -483,38 +545,61 @@ function pipLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
 
 function junoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils'] } {
   const tint = i.colors.companion.juno;
+  const ink = darken(tint, 0.72);
   const layers: RigLayer[] = [];
 
-  // Ears lag the body a touch — organic follow-through. Tufts at Sprout.
-  const earShapes: RigShape[] = [
-    { kind: 'path', d: 'M 26 44 L 22 18 L 42 32 Z', fill: darken(tint, 0.08) },
-    { kind: 'path', d: 'M 74 44 L 78 18 L 58 32 Z', fill: darken(tint, 0.08) },
-    { kind: 'path', d: 'M 27 41 L 25 25 L 38 34 Z', fill: lighten(tint, 0.35), opacity: 0.7 },
-    { kind: 'path', d: 'M 73 41 L 75 25 L 62 34 Z', fill: lighten(tint, 0.35), opacity: 0.7 },
+  // Ears + curling tail lag the body — organic follow-through.
+  const backShapes: RigShape[] = [
+    { kind: 'path', d: 'M 32 22 L 27 6 L 45 14 Z', fill: darken(tint, 0.08) },
+    { kind: 'path', d: 'M 68 22 L 73 6 L 55 14 Z', fill: darken(tint, 0.08) },
+    { kind: 'path', d: 'M 33 19 L 30 9 L 41 14 Z', fill: lighten(tint, 0.35), opacity: 0.7 },
+    { kind: 'path', d: 'M 67 19 L 70 9 L 59 14 Z', fill: lighten(tint, 0.35), opacity: 0.7 },
+    { kind: 'path', d: 'M 64 80 C 76 79 81 70 76 61', stroke: darken(tint, 0.08), strokeWidth: 5, strokeLinecap: 'round', fill: 'none' },
   ];
   if (i.stage >= 2) {
-    earShapes.push(
-      { kind: 'path', d: 'M 22 18 L 20 12 L 26 16 Z', fill: darken(tint, 0.08) },
-      { kind: 'path', d: 'M 78 18 L 80 12 L 74 16 Z', fill: darken(tint, 0.08) },
+    backShapes.push(
+      { kind: 'path', d: 'M 27 6 L 25 1.5 L 30 4 Z', fill: darken(tint, 0.08) },
+      { kind: 'path', d: 'M 73 6 L 75 1.5 L 70 4 Z', fill: darken(tint, 0.08) },
     );
+  }
+  if (i.stage >= 3) {
+    backShapes.push({ kind: 'circle', cx: 76, cy: 61, r: 3, fill: lighten(tint, 0.35) });
   }
   if (i.stage >= 5) {
-    earShapes.push(
-      { kind: 'path', d: starPath(21, 14, 2.4), fill: i.colors.spark, opacity: 0.9 },
-      { kind: 'path', d: starPath(79, 14, 2.4), fill: i.colors.spark, opacity: 0.9 },
+    backShapes.push(
+      { kind: 'path', d: starPath(25, 4, 2.4), fill: i.colors.spark, opacity: 0.9 },
+      { kind: 'path', d: starPath(75, 4, 2.4), fill: i.colors.spark, opacity: 0.9 },
     );
   }
-  layers.push({ id: 'back', shapes: earShapes, breathAmp: 0.02, breathPhase: 0.35, sway: 1.5 });
+  layers.push({ id: 'back', shapes: backShapes, breathAmp: 0.02, breathPhase: 0.35, sway: 2 });
+
+  // Sitting-cat front legs with lighter paws.
+  if (i.stage >= 2) {
+    layers.push({
+      id: 'arms',
+      shapes: [
+        { kind: 'line', x1: 43, y1: 72, x2: 43, y2: 83, stroke: darken(tint, 0.05), strokeWidth: 5.5, strokeLinecap: 'round' },
+        { kind: 'line', x1: 57, y1: 72, x2: 57, y2: 83, stroke: darken(tint, 0.05), strokeWidth: 5.5, strokeLinecap: 'round' },
+        { kind: 'ellipse', cx: 43, cy: 85.5, rx: 4.5, ry: 3, fill: lighten(tint, 0.3) },
+        { kind: 'ellipse', cx: 57, cy: 85.5, rx: 4.5, ry: 3, fill: lighten(tint, 0.3) },
+      ],
+      breathAmp: 0.02,
+      breathPhase: 0.25,
+    });
+  }
 
   const bodyShapes: RigShape[] = [
-    { kind: 'circle', cx: 50, cy: 60, r: 31, fill: bodyFill(tint, i.stage) },
+    { kind: 'circle', cx: 50, cy: 35, r: 21, fill: bodyFill(tint, i.stage) },
+    // Torso tucks up under the head so the silhouette reads as one body.
+    { kind: 'ellipse', cx: 50, cy: 71, rx: 15.5, ry: 14, fill: bodyFill(tint, i.stage) },
   ];
+  if (i.stage <= 1) bodyShapes.push(...feet(darken(tint, 0.1)));
   if (i.stage >= 2) {
     bodyShapes.push(
-      { kind: 'ellipse', cx: 50, cy: 74, rx: 14, ry: 10, fill: lighten(tint, 0.3), opacity: 0.5 },
+      { kind: 'ellipse', cx: 50, cy: 75, rx: 8, ry: 6, fill: lighten(tint, 0.3), opacity: 0.5 },
       {
         kind: 'path',
-        d: 'M 28 47 C 25 53 24 59 25 66',
+        d: 'M 36 23 C 33 27 31 32 31 37',
         stroke: lighten(tint, 0.5),
         strokeWidth: 3,
         strokeLinecap: 'round',
@@ -527,40 +612,41 @@ function junoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
 
   const markings: RigShape[] = [];
   if (i.stage >= 3) {
+    // Forehead stripes.
     markings.push(
-      { kind: 'line', x1: 44, y1: 33, x2: 44, y2: 40, stroke: '#FFFFFF', strokeWidth: 2.5, strokeLinecap: 'round', opacity: 0.4 },
-      { kind: 'line', x1: 50, y1: 31, x2: 50, y2: 39, stroke: '#FFFFFF', strokeWidth: 2.5, strokeLinecap: 'round', opacity: 0.4 },
-      { kind: 'line', x1: 56, y1: 33, x2: 56, y2: 40, stroke: '#FFFFFF', strokeWidth: 2.5, strokeLinecap: 'round', opacity: 0.4 },
+      { kind: 'line', x1: 44, y1: 16, x2: 44, y2: 22, stroke: WHITE, strokeWidth: 2.5, strokeLinecap: 'round', opacity: 0.4 },
+      { kind: 'line', x1: 50, y1: 14, x2: 50, y2: 21, stroke: WHITE, strokeWidth: 2.5, strokeLinecap: 'round', opacity: 0.4 },
+      { kind: 'line', x1: 56, y1: 16, x2: 56, y2: 22, stroke: WHITE, strokeWidth: 2.5, strokeLinecap: 'round', opacity: 0.4 },
     );
   }
   if (i.stage >= 4) {
-    // Star-collar.
+    // Star-collar on the neckline.
     markings.push(
-      { kind: 'path', d: starPath(40, 86, 2.6), fill: i.colors.spark, opacity: 0.9 },
-      { kind: 'path', d: starPath(50, 89, 3), fill: i.colors.spark, opacity: 0.95 },
-      { kind: 'path', d: starPath(60, 86, 2.6), fill: i.colors.spark, opacity: 0.9 },
+      { kind: 'path', d: starPath(42, 57, 2.6), fill: i.colors.spark, opacity: 0.9 },
+      { kind: 'path', d: starPath(50, 59.5, 3), fill: i.colors.spark, opacity: 0.95 },
+      { kind: 'path', d: starPath(58, 57, 2.6), fill: i.colors.spark, opacity: 0.9 },
     );
   }
   if (i.stage >= 5) {
-    markings.push({ kind: 'path', d: starPath(50, 38, 3), fill: i.colors.spark, opacity: 0.9 });
+    markings.push({ kind: 'path', d: starPath(50, 26, 2.6), fill: i.colors.spark, opacity: 0.9 });
   }
   if (markings.length > 0) {
     layers.push({ id: 'markings', shapes: markings, breathAmp: 0.022, breathPhase: 0 });
   }
 
-  // Whiskers grow with the Sprout upgrade.
+  // Whiskers grow with the Sprout upgrade; little cat nose above the mouth.
   const wLen = i.stage >= 2 ? 0 : 4;
   const whiskers: RigShape[] = [
-    { kind: 'line', x1: 18 + wLen, y1: 62, x2: 34, y2: 64, stroke: '#FFFFFF', strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
-    { kind: 'line', x1: 18 + wLen, y1: 70, x2: 34, y2: 69, stroke: '#FFFFFF', strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
-    { kind: 'line', x1: 82 - wLen, y1: 62, x2: 66, y2: 64, stroke: '#FFFFFF', strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
-    { kind: 'line', x1: 82 - wLen, y1: 70, x2: 66, y2: 69, stroke: '#FFFFFF', strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
-    { kind: 'path', d: 'M 47 66 L 53 66 L 50 70 Z', fill: '#FFFFFF' },
+    { kind: 'line', x1: 25 + wLen, y1: 40, x2: 37, y2: 42, stroke: WHITE, strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
+    { kind: 'line', x1: 25 + wLen, y1: 46, x2: 37, y2: 45, stroke: WHITE, strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
+    { kind: 'line', x1: 75 - wLen, y1: 40, x2: 63, y2: 42, stroke: WHITE, strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
+    { kind: 'line', x1: 75 - wLen, y1: 46, x2: 63, y2: 45, stroke: WHITE, strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.65 },
+    { kind: 'path', d: 'M 47.5 43 L 52.5 43 L 50 46 Z', fill: WHITE, opacity: 0.9 },
   ];
 
-  const { face, pupils } = organicFace(
+  const { face, pupils } = cuteFace(
     i,
-    { eyeY: 56, eyeColor: '#FFFFFF', mouthY: 74, mouthColor: '#FFFFFF', blushY: 63, blushColor: '#FFFFFF' },
+    { eyeXs: [41, 59], eyeY: 35, mouthY: 48, ink, blushY: 42 },
     whiskers,
   );
   layers.push(face);
@@ -572,40 +658,62 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
   const c = i.colors;
   const layers: RigLayer[] = [];
 
+  // Side fins from Sprout on (behind the arms).
   if (i.stage >= 2) {
     layers.push({
       id: 'back',
       shapes: [
-        { kind: 'rect', x: 12, y: 50, width: 9, height: 16, rx: 3, fill: darken(tint, 0.1) },
-        { kind: 'rect', x: 79, y: 50, width: 9, height: 16, rx: 3, fill: darken(tint, 0.1) },
+        { kind: 'rect', x: 21, y: 51, width: 6, height: 13, rx: 3, fill: darken(tint, 0.1) },
+        { kind: 'rect', x: 73, y: 51, width: 6, height: 13, rx: 3, fill: darken(tint, 0.1) },
       ],
       breathAmp: 0.018,
       breathPhase: 0.3,
     });
   }
 
-  const bodyShapes: RigShape[] = [
-    { kind: 'rect', x: 22, y: 30, width: 56, height: 52, rx: 12, fill: bodyFill(tint, i.stage) },
-    // Screen inset + a faint spark-colored rim so the face reads lit.
-    { kind: 'rect', x: 28, y: 38, width: 44, height: 36, rx: 8, fill: c.text, opacity: 0.85 },
-    { kind: 'rect', x: 28, y: 38, width: 44, height: 36, rx: 8, stroke: c.spark, strokeWidth: 1.5, fill: 'none', opacity: i.stage >= 5 ? 0.6 : 0.35 },
-  ];
   if (i.stage >= 2) {
-    bodyShapes.push({
-      kind: 'path',
-      d: 'M 26 36 C 25 44 25 52 26 60',
-      stroke: lighten(tint, 0.45),
-      strokeWidth: 2.5,
-      strokeLinecap: 'round',
-      fill: 'none',
-      opacity: 0.8,
+    layers.push({
+      id: 'arms',
+      shapes: [
+        { kind: 'rect', x: 26, y: 52, width: 7, height: 16, rx: 3.5, fill: darken(tint, 0.1) },
+        { kind: 'rect', x: 67, y: 52, width: 7, height: 16, rx: 3.5, fill: darken(tint, 0.1) },
+      ],
+      breathAmp: 0.02,
+      breathPhase: 0.28,
+      sway: 1.5,
     });
   }
-  if (i.stage >= 3) {
-    // Panel seams + a little side vent: the body detail pass.
+
+  // Big screen head on a boxy little torso with chunky boots.
+  const bodyShapes: RigShape[] = [
+    { kind: 'rect', x: 29, y: 14, width: 42, height: 32, rx: 10, fill: bodyFill(tint, i.stage) },
+    { kind: 'rect', x: 35, y: 48, width: 30, height: 28, rx: 8, fill: bodyFill(tint, i.stage) },
+    { kind: 'rect', x: 37, y: 78, width: 11, height: 8, rx: 3.5, fill: darken(tint, 0.12) },
+    { kind: 'rect', x: 52, y: 78, width: 11, height: 8, rx: 3.5, fill: darken(tint, 0.12) },
+    // Screen inset + a faint spark-colored rim so the face reads lit.
+    { kind: 'rect', x: 34, y: 20, width: 32, height: 22, rx: 6, fill: c.text, opacity: 0.85 },
+    { kind: 'rect', x: 34, y: 20, width: 32, height: 22, rx: 6, stroke: c.spark, strokeWidth: 1.5, fill: 'none', opacity: i.stage >= 5 ? 0.6 : 0.35 },
+  ];
+  if (i.stage >= 2) {
     bodyShapes.push(
-      { kind: 'line', x1: 30, y1: 78, x2: 42, y2: 78, stroke: darken(tint, 0.16), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.6 },
-      { kind: 'line', x1: 58, y1: 78, x2: 70, y2: 78, stroke: darken(tint, 0.16), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.6 },
+      {
+        kind: 'path',
+        d: 'M 33 19 C 32 25 32 32 33 39',
+        stroke: lighten(tint, 0.45),
+        strokeWidth: 2.5,
+        strokeLinecap: 'round',
+        fill: 'none',
+        opacity: 0.8,
+      },
+      // Chest light.
+      { kind: 'circle', cx: 50, cy: 54, r: 3, fill: i.mood !== 'dozing' ? c.spark : c.textMuted },
+    );
+  }
+  if (i.stage >= 3) {
+    // Panel seams: the body detail pass.
+    bodyShapes.push(
+      { kind: 'line', x1: 40, y1: 68, x2: 46, y2: 68, stroke: darken(tint, 0.16), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.6 },
+      { kind: 'line', x1: 54, y1: 68, x2: 60, y2: 68, stroke: darken(tint, 0.16), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.6 },
     );
   }
   layers.push({ id: 'body', shapes: bodyShapes, breathAmp: 0.014, breathPhase: 0 });
@@ -614,15 +722,15 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
   // upgrade grows a full array; Luminous lights every tip.
   const lit = i.mood !== 'dozing';
   const antenna: RigShape[] = [
-    { kind: 'line', x1: 50, y1: 30, x2: 50, y2: 16, stroke: darken(tint, 0.08), strokeWidth: 3 },
-    { kind: 'circle', cx: 50, cy: 13, r: 4.5, fill: lit ? c.spark : c.textMuted },
+    { kind: 'line', x1: 50, y1: 14, x2: 50, y2: 7, stroke: darken(tint, 0.08), strokeWidth: 3 },
+    { kind: 'circle', cx: 50, cy: 5, r: 3.5, fill: lit ? c.spark : c.textMuted },
   ];
   if (i.stage >= 4) {
     antenna.push(
-      { kind: 'line', x1: 38, y1: 30, x2: 34, y2: 21, stroke: darken(tint, 0.08), strokeWidth: 2.2 },
-      { kind: 'circle', cx: 33, cy: 19, r: 2.6, fill: lit && i.stage >= 5 ? c.spark : darken(tint, 0.05) },
-      { kind: 'line', x1: 62, y1: 30, x2: 66, y2: 21, stroke: darken(tint, 0.08), strokeWidth: 2.2 },
-      { kind: 'circle', cx: 67, cy: 19, r: 2.6, fill: lit && i.stage >= 5 ? c.spark : darken(tint, 0.05) },
+      { kind: 'line', x1: 38, y1: 14, x2: 34, y2: 7.5, stroke: darken(tint, 0.08), strokeWidth: 2.2 },
+      { kind: 'circle', cx: 33, cy: 6, r: 2.4, fill: lit && i.stage >= 5 ? c.spark : darken(tint, 0.05) },
+      { kind: 'line', x1: 62, y1: 14, x2: 66, y2: 7.5, stroke: darken(tint, 0.08), strokeWidth: 2.2 },
+      { kind: 'circle', cx: 67, cy: 6, r: 2.4, fill: lit && i.stage >= 5 ? c.spark : darken(tint, 0.05) },
     );
   }
   layers.push({
@@ -633,20 +741,23 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
     sway: 2.5,
   });
 
-  // Screen face: rect eyes wander slightly; arcs replace them when closed.
+  // Screen face: big rounded rect eyes wander; arcs replace them when closed.
+  const big = i.stage <= 1;
+  const eyeW = big ? 9 : 8;
+  const eyeH = big ? 11 : 10;
   const faceShapes: RigShape[] = [];
   let pupils: RigModel['pupils'] = null;
   if (i.eyesClosed) {
     faceShapes.push(
-      { kind: 'rect', x: 36, y: 52, width: 10, height: 2.5, rx: 1.2, fill: c.spark },
-      { kind: 'rect', x: 54, y: 52, width: 10, height: 2.5, rx: 1.2, fill: c.spark },
+      { kind: 'rect', x: 37, y: 28, width: 9, height: 2.5, rx: 1.2, fill: c.spark },
+      { kind: 'rect', x: 54, y: 28, width: 9, height: 2.5, rx: 1.2, fill: c.spark },
     );
   } else {
     const tall = i.mood === 'alert';
     pupils = {
       shapes: [
-        { kind: 'rect', x: 36, y: tall ? 46 : 48, width: 10, height: tall ? 10 : 8, rx: 2, fill: c.spark },
-        { kind: 'rect', x: 54, y: tall ? 46 : 48, width: 10, height: tall ? 10 : 8, rx: 2, fill: c.spark },
+        { kind: 'rect', x: 41.5 - eyeW / 2, y: tall ? 22.5 : 24, width: eyeW, height: tall ? eyeH + 1.5 : eyeH, rx: 2.5, fill: c.spark },
+        { kind: 'rect', x: 58.5 - eyeW / 2, y: tall ? 22.5 : 24, width: eyeW, height: tall ? eyeH + 1.5 : eyeH, rx: 2.5, fill: c.spark },
       ],
       range: 1.6,
     };
@@ -654,14 +765,14 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
   if (i.mood === 'celebrating') {
     faceShapes.push({
       kind: 'path',
-      d: 'M 40 64 Q 50 70 60 64',
+      d: 'M 42 36 Q 50 41 58 36',
       stroke: c.spark,
       strokeWidth: 2.5,
       strokeLinecap: 'round',
       fill: 'none',
     });
   } else {
-    faceShapes.push({ kind: 'line', x1: 42, y1: 66, x2: 58, y2: 66, stroke: c.spark, strokeWidth: 2.5, strokeLinecap: 'round' });
+    faceShapes.push({ kind: 'line', x1: 44, y1: 37, x2: 56, y2: 37, stroke: c.spark, strokeWidth: 2.5, strokeLinecap: 'round' });
   }
   if (i.mood === 'dozing') faceShapes.push(...sleepZs(c.textMuted));
   layers.push({ id: 'face', shapes: faceShapes, breathAmp: 0.012, breathPhase: 0.2 });
