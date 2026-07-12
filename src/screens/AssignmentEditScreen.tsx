@@ -1,7 +1,10 @@
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useHeaderHeight } from '@react-navigation/elements';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -51,6 +54,22 @@ export default function AssignmentEditScreen({
   const [completed, setCompleted] = useState(false);
   const [picker, setPicker] = useState<'date' | 'time' | null>(null);
   const [ready, setReady] = useState(false);
+
+  const headerHeight = useHeaderHeight();
+  const scrollRef = useRef<ScrollView>(null);
+  const notesFocused = useRef(false);
+
+  // Notes sits at the bottom of the form; neither platform scrolls it into view on its own
+  // once the keyboard shrinks the viewport (Android resize / iOS KeyboardAvoidingView padding).
+  const scrollNotesIntoView = useCallback(() => {
+    if (notesFocused.current) scrollRef.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  useEffect(() => {
+    // Fires after the viewport has resized, so scrollToEnd targets the shrunken layout.
+    const sub = Keyboard.addListener('keyboardDidShow', scrollNotesIntoView);
+    return () => sub.remove();
+  }, [scrollNotesIntoView]);
 
   useEffect(() => {
     (async () => {
@@ -130,124 +149,140 @@ export default function AssignmentEditScreen({
   if (!ready) return <View style={styles.container} />;
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+      // Android resizes the window itself (softwareKeyboardLayoutMode: resize);
+      // adding padding there too would double-compensate.
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}
     >
-      <Text style={styles.fieldLabel}>Title</Text>
-      <TextInput
-        value={title}
-        onChangeText={setTitle}
-        placeholder="e.g. Worksheet p. 12–14"
-        placeholderTextColor={colors.textMuted}
-        style={styles.input}
-        autoFocus={!isEditing}
-        maxLength={120}
-      />
-
-      <Text style={styles.fieldLabel}>Subject</Text>
-      <View style={styles.chipWrap}>
-        {subjects.map((s) => {
-          const selected = s.id === subjectId;
-          return (
-            <Pressable
-              key={s.id}
-              onPress={() => setSubjectId(s.id)}
-              style={[styles.chip, selected && { backgroundColor: s.color, borderColor: s.color }]}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-            >
-              <View style={[styles.chipDot, { backgroundColor: selected ? colors.card : s.color }]} />
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{s.name}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Text style={styles.fieldLabel}>Type</Text>
-      <View style={styles.chipWrap}>
-        {ASSIGNMENT_TYPES.map((t) => {
-          const selected = t === type;
-          return (
-            <Pressable
-              key={t}
-              onPress={() => setType(t)}
-              style={[styles.chip, selected && styles.chipPrimary]}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                {ASSIGNMENT_TYPE_LABELS[t]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Text style={styles.fieldLabel}>Due</Text>
-      <View style={styles.dueRow}>
-        <Pressable
-          onPress={() => setPicker(picker === 'date' ? null : 'date')}
-          style={styles.dueButton}
-          accessibilityRole="button"
-        >
-          <Text style={styles.dueButtonText}>{formatDayLabel(due.getTime())}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setPicker(picker === 'time' ? null : 'time')}
-          style={styles.dueButton}
-          accessibilityRole="button"
-        >
-          <Text style={styles.dueButtonText}>{formatTime(due.getTime())}</Text>
-        </Pressable>
-      </View>
-      {picker && (
-        <DateTimePicker
-          value={due}
-          mode={picker}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onPickerChange}
-        />
-      )}
-      <Text style={styles.hint}>
-        Reminders: the evening before at 6:00 PM and the morning of at 7:30 AM.
-      </Text>
-
-      <Text style={styles.fieldLabel}>Notes</Text>
-      <TextInput
-        value={notes}
-        onChangeText={setNotes}
-        placeholder="Anything to remember — pages, materials, topics…"
-        placeholderTextColor={colors.textMuted}
-        style={[styles.input, styles.notesInput]}
-        multiline
-        maxLength={2000}
-      />
-
-      <Pressable
-        onPress={save}
-        style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}
-        accessibilityRole="button"
+      <ScrollView
+        ref={scrollRef}
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.saveText}>{isEditing ? 'Save changes' : 'Add assignment'}</Text>
-      </Pressable>
+        <Text style={styles.fieldLabel}>Title</Text>
+        <TextInput
+          value={title}
+          onChangeText={setTitle}
+          placeholder="e.g. Worksheet p. 12–14"
+          placeholderTextColor={colors.textMuted}
+          style={styles.input}
+          autoFocus={!isEditing}
+          maxLength={120}
+        />
 
-      {isEditing && (
+        <Text style={styles.fieldLabel}>Subject</Text>
+        <View style={styles.chipWrap}>
+          {subjects.map((s) => {
+            const selected = s.id === subjectId;
+            return (
+              <Pressable
+                key={s.id}
+                onPress={() => setSubjectId(s.id)}
+                style={[styles.chip, selected && { backgroundColor: s.color, borderColor: s.color }]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <View style={[styles.chipDot, { backgroundColor: selected ? colors.card : s.color }]} />
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{s.name}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={styles.fieldLabel}>Type</Text>
+        <View style={styles.chipWrap}>
+          {ASSIGNMENT_TYPES.map((t) => {
+            const selected = t === type;
+            return (
+              <Pressable
+                key={t}
+                onPress={() => setType(t)}
+                style={[styles.chip, selected && styles.chipPrimary]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {ASSIGNMENT_TYPE_LABELS[t]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={styles.fieldLabel}>Due</Text>
+        <View style={styles.dueRow}>
+          <Pressable
+            onPress={() => setPicker(picker === 'date' ? null : 'date')}
+            style={styles.dueButton}
+            accessibilityRole="button"
+          >
+            <Text style={styles.dueButtonText}>{formatDayLabel(due.getTime())}</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setPicker(picker === 'time' ? null : 'time')}
+            style={styles.dueButton}
+            accessibilityRole="button"
+          >
+            <Text style={styles.dueButtonText}>{formatTime(due.getTime())}</Text>
+          </Pressable>
+        </View>
+        {picker && (
+          <DateTimePicker
+            value={due}
+            mode={picker}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onPickerChange}
+          />
+        )}
+        <Text style={styles.hint}>
+          Reminders: the evening before at 6:00 PM and the morning of at 7:30 AM.
+        </Text>
+
+        <Text style={styles.fieldLabel}>Notes</Text>
+        <TextInput
+          value={notes}
+          onChangeText={setNotes}
+          placeholder="Anything to remember — pages, materials, topics…"
+          placeholderTextColor={colors.textMuted}
+          style={[styles.input, styles.notesInput]}
+          multiline
+          maxLength={2000}
+          onFocus={() => {
+            notesFocused.current = true;
+            scrollNotesIntoView(); // keyboard may already be up (focus moved from another field)
+          }}
+          onBlur={() => {
+            notesFocused.current = false;
+          }}
+        />
+
         <Pressable
-          onPress={confirmDelete}
-          style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+          onPress={save}
+          style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}
           accessibilityRole="button"
         >
-          <Text style={styles.deleteText}>Delete assignment</Text>
+          <Text style={styles.saveText}>{isEditing ? 'Save changes' : 'Add assignment'}</Text>
         </Pressable>
-      )}
-      {isEditing && completed && (
-        <Text style={styles.hint}>
-          This assignment is marked complete{notificationIds.length ? '' : ' — no reminders scheduled'}.
-        </Text>
-      )}
-    </ScrollView>
+
+        {isEditing && (
+          <Pressable
+            onPress={confirmDelete}
+            style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.deleteText}>Delete assignment</Text>
+          </Pressable>
+        )}
+        {isEditing && completed && (
+          <Text style={styles.hint}>
+            This assignment is marked complete{notificationIds.length ? '' : ' — no reminders scheduled'}.
+          </Text>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -24,6 +24,13 @@ Invariant: each assignment row persists its scheduled notification ids (`notific
 JSON column). Any mutation must go through `refreshAssignmentRemindersAsync()` (cancels stale
 ids, reschedules, persists new ids); deletes return the ids so callers can cancel them.
 
+Keyboard handling on form screens (see `AssignmentEditScreen`): `KeyboardAvoidingView` with
+`behavior` `padding` on iOS (plus `keyboardVerticalOffset={useHeaderHeight()}` — screens sit
+under a native-stack header) and `undefined` on Android, where the window already resizes
+(`softwareKeyboardLayoutMode` defaults to `resize`; padding there would double-compensate).
+Neither platform auto-scrolls a bottom-of-form input into the shrunken viewport — scroll it
+into view explicitly on focus/`keyboardDidShow`.
+
 # EAS builds (config only — owner runs the builds)
 
 - `eas.json`: `development` (dev client, internal, APK), `preview` (internal APK), `production`
