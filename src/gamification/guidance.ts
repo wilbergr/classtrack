@@ -139,7 +139,13 @@ export function composeGuidance(inputs: GuidanceInputs, recent: string[]): Utter
     slots.push('windDown');
   }
 
-  return pickMany(slots, inputs, ctx, recent);
+  const out = pickMany(slots, inputs, ctx, recent);
+  // Packs with sparse pools (Plain has no greetings/weekend lines) must
+  // still say *something* — the day's information at minimum.
+  if (out.length === 0) {
+    return pickMany([ctx.dueToday > 0 ? 'daySummary' : 'allClear'], inputs, ctx, recent);
+  }
+  return out;
 }
 
 /** A single live line for a Spark event (celebrate / level-up). */
