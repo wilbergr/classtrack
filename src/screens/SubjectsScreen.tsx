@@ -1,5 +1,5 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -23,10 +23,12 @@ import {
 } from '../db/database';
 import type { TabScreenProps } from '../navigation';
 import { cancelRemindersAsync } from '../notifications';
-import { colors, radius, spacing, subjectPalette } from '../theme';
+import { radius, spacing, subjectPalette, useTheme, type ThemeColors } from '../theme';
 import type { Subject } from '../types';
 
 export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [openCounts, setOpenCounts] = useState<Record<number, number>>({});
   const [loaded, setLoaded] = useState(false);
@@ -68,7 +70,7 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
         </Pressable>
       ),
     });
-  }, [navigation, openEditor]);
+  }, [navigation, openEditor, styles]);
 
   const save = useCallback(async () => {
     const trimmed = name.trim();
@@ -223,7 +225,7 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   listContent: { paddingVertical: spacing.md, flexGrow: 1 },
   headerAction: { color: colors.primary, fontSize: 16, fontWeight: '600' },

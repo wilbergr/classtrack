@@ -1,13 +1,15 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import AssignmentRow from '../components/AssignmentRow';
 import EmptyState from '../components/EmptyState';
 import { getSubject, listAssignmentsForSubject, setAssignmentCompleted } from '../db/database';
+import { awardCompleteAsync } from '../gamification/engine';
+import { useCalmMotion } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { refreshAssignmentRemindersAsync } from '../notifications';
-import { colors, spacing } from '../theme';
+import { spacing, useTheme, type ThemeColors } from '../theme';
 import type { AssignmentWithSubject, Subject } from '../types';
 
 interface Section {
@@ -20,9 +22,12 @@ export default function SubjectDetailScreen({
   route,
 }: RootStackScreenProps<'SubjectDetail'>) {
   const { subjectId } = route.params;
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [subject, setSubject] = useState<Subject | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const calm = useCalmMotion();
 
   const load = useCallback(async () => {
     const s = await getSubject(subjectId);
@@ -61,15 +66,20 @@ export default function SubjectDetailScreen({
         </Pressable>
       ),
     });
-  }, [navigation, subject, subjectId]);
+  }, [navigation, subject, subjectId, styles]);
 
   const toggleComplete = useCallback(
     async (a: AssignmentWithSubject) => {
-      await setAssignmentCompleted(a.id, !a.completed);
+      const nowCompleted = !a.completed;
+      await setAssignmentCompleted(a.id, nowCompleted);
       await refreshAssignmentRemindersAsync(a.id);
+      if (nowCompleted) {
+        await awardCompleteAsync({ id: a.id, dueAt: a.dueAt });
+        if (!calm) await new Promise((r) => setTimeout(r, 450));
+      }
       await load();
     },
-    [load],
+    [load, calm],
   );
 
   return (
@@ -115,7 +125,7 @@ export default function SubjectDetailScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerAction: { color: colors.primary, fontSize: 16, fontWeight: '600' },
   banner: {

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 
 interface Props {
   emoji?: string;
@@ -12,6 +12,8 @@ interface Props {
 }
 
 export default function EmptyState({ emoji = '🎒', title, message, actionLabel, onAction }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
       <Text style={styles.emoji}>{emoji}</Text>
@@ -30,7 +32,7 @@ export default function EmptyState({ emoji = '🎒', title, message, actionLabel
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingVertical: spacing.xl * 2 },
   emoji: { fontSize: 44, marginBottom: spacing.md },
   title: { color: colors.text, fontSize: 18, fontWeight: '700', textAlign: 'center' },

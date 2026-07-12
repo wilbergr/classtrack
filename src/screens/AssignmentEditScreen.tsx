@@ -1,6 +1,6 @@
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useHeaderHeight } from '@react-navigation/elements';
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -22,9 +22,10 @@ import {
   updateAssignment,
 } from '../db/database';
 import { formatDayLabel, formatTime } from '../dates';
+import { awardCaptureAsync } from '../gamification/engine';
 import type { RootStackScreenProps } from '../navigation';
 import { cancelRemindersAsync, refreshAssignmentRemindersAsync } from '../notifications';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 import type { AssignmentType, Subject } from '../types';
 import { ASSIGNMENT_TYPES, ASSIGNMENT_TYPE_LABELS } from '../types';
 
@@ -40,15 +41,20 @@ export default function AssignmentEditScreen({
   navigation,
   route,
 }: RootStackScreenProps<'AssignmentEdit'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const assignmentId = route.params?.assignmentId;
   const presetSubjectId = route.params?.subjectId;
+  const draft = route.params?.draft;
   const isEditing = assignmentId != null;
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState<number | null>(presetSubjectId ?? null);
-  const [type, setType] = useState<AssignmentType>('homework');
-  const [due, setDue] = useState<Date>(defaultDue);
+  const [title, setTitle] = useState(draft?.title ?? '');
+  const [subjectId, setSubjectId] = useState<number | null>(
+    draft?.subjectId ?? presetSubjectId ?? null,
+  );
+  const [type, setType] = useState<AssignmentType>(draft?.type ?? 'homework');
+  const [due, setDue] = useState<Date>(() => (draft ? new Date(draft.dueAt) : defaultDue()));
   const [notes, setNotes] = useState('');
   const [notificationIds, setNotificationIds] = useState<string[]>([]);
   const [completed, setCompleted] = useState(false);
@@ -86,12 +92,12 @@ export default function AssignmentEditScreen({
           setNotificationIds(a.notificationIds);
           setCompleted(a.completed);
         }
-      } else if (presetSubjectId == null && subs.length > 0) {
+      } else if (presetSubjectId == null && draft?.subjectId == null && subs.length > 0) {
         setSubjectId(subs[0].id);
       }
       setReady(true);
     })();
-  }, [assignmentId, isEditing, presetSubjectId]);
+  }, [assignmentId, isEditing, presetSubjectId, draft]);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Edit assignment' : 'New assignment' });
@@ -127,6 +133,8 @@ export default function AssignmentEditScreen({
     }
     // Cancels stale reminders and schedules evening-before + morning-of.
     await refreshAssignmentRemindersAsync(id);
+    // Capture Sparks (idempotent per assignment; the burst plays over Today).
+    if (!isEditing) await awardCaptureAsync(id);
     navigation.goBack();
   }, [title, subjectId, type, due, notes, assignmentId, isEditing, navigation]);
 
@@ -286,7 +294,7 @@ export default function AssignmentEditScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   fieldLabel: {

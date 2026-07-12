@@ -12,7 +12,7 @@ import type {
 } from '../types';
 
 const DB_NAME = 'classtrack.db';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
@@ -64,6 +64,57 @@ async function migrate(db: SQLite.SQLiteDatabase): Promise<void> {
     `);
   }
 
+  if (current < 2) {
+    // Spark (gamification) tables. All additive; existing rows migrate untouched.
+    await db.execAsync(`
+      ALTER TABLE assignments ADD COLUMN completed_at INTEGER;
+
+      -- Single-row aggregate (id constrained to 1). Fast reads for headers/meters.
+      CREATE TABLE IF NOT EXISTS progress (
+        id             INTEGER PRIMARY KEY CHECK (id = 1),
+        lifetime       INTEGER NOT NULL DEFAULT 0,
+        spent          INTEGER NOT NULL DEFAULT 0,
+        momentum       INTEGER NOT NULL DEFAULT 0,
+        best_momentum  INTEGER NOT NULL DEFAULT 0,
+        grace          INTEGER NOT NULL DEFAULT 2,
+        grace_week     INTEGER NOT NULL DEFAULT 0,
+        last_active_day INTEGER,
+        last_settled_day INTEGER,
+        comeback       INTEGER NOT NULL DEFAULT 0,
+        created_at     INTEGER NOT NULL
+      );
+
+      -- Append-only Spark event log. Source of truth; progress is a cached rollup.
+      CREATE TABLE IF NOT EXISTS ledger (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind          TEXT NOT NULL,
+        amount        INTEGER NOT NULL,
+        assignment_id INTEGER REFERENCES assignments(id) ON DELETE SET NULL,
+        item_key      TEXT,
+        day           INTEGER NOT NULL,
+        created_at    INTEGER NOT NULL
+      );
+      -- Each per-assignment award can only ever happen once, even across
+      -- complete -> un-complete -> complete cycles.
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_ledger_once
+        ON ledger(kind, assignment_id) WHERE assignment_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_ledger_day ON ledger(day);
+
+      -- Generic key-value settings (JSON-encoded values).
+      CREATE TABLE IF NOT EXISTS settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+
+      -- Owned cosmetics (themes, companion accessories, celebration styles).
+      CREATE TABLE IF NOT EXISTS unlocks (
+        item_key    TEXT PRIMARY KEY,
+        cost        INTEGER NOT NULL,
+        acquired_at INTEGER NOT NULL
+      );
+    `);
+  }
+
   await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
 
@@ -84,6 +135,7 @@ interface AssignmentRow {
   due_at: number;
   notes: string;
   completed: number;
+  completed_at: number | null;
   notification_ids: string;
   created_at: number;
 }
@@ -115,6 +167,7 @@ function toAssignment(r: AssignmentRow): Assignment {
     dueAt: r.due_at,
     notes: r.notes,
     completed: r.completed !== 0,
+    completedAt: r.completed_at,
     notificationIds: parseNotificationIds(r.notification_ids),
     createdAt: r.created_at,
   };
@@ -227,6 +280,7 @@ export async function createAssignment(input: AssignmentInput): Promise<Assignme
     id: res.lastInsertRowId,
     ...input,
     completed: false,
+    completedAt: null,
     notificationIds: [],
     createdAt,
   };
@@ -247,12 +301,47 @@ export async function updateAssignment(id: number, input: AssignmentInput): Prom
 
 export async function setAssignmentCompleted(id: number, completed: boolean): Promise<void> {
   const db = await getDb();
-  await db.runAsync('UPDATE assignments SET completed = ? WHERE id = ?', completed ? 1 : 0, id);
+  await db.runAsync(
+    'UPDATE assignments SET completed = ?, completed_at = ? WHERE id = ?',
+    completed ? 1 : 0,
+    completed ? Date.now() : null,
+    id,
+  );
 }
 
 export async function setAssignmentNotificationIds(id: number, ids: string[]): Promise<void> {
   const db = await getDb();
   await db.runAsync('UPDATE assignments SET notification_ids = ? WHERE id = ?', JSON.stringify(ids), id);
+}
+
+/** Open assignments due in [startTs, endTs) — digest + big-day counts. */
+export async function countOpenDueBetween(startTs: number, endTs: number): Promise<number> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM assignments WHERE completed = 0 AND due_at >= ? AND due_at < ?',
+    startTs,
+    endTs,
+  );
+  return row?.n ?? 0;
+}
+
+/** Open assignments already past due as of `ts`. */
+export async function countOpenOverdue(ts: number): Promise<number> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM assignments WHERE completed = 0 AND due_at < ?',
+    ts,
+  );
+  return row?.n ?? 0;
+}
+
+/** All (subjectId, title) pairs — feeds Quick Add's local subject-inference heuristic. */
+export async function listAssignmentTitles(): Promise<{ subjectId: number; title: string }[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ subject_id: number; title: string }>(
+    'SELECT subject_id, title FROM assignments ORDER BY created_at DESC LIMIT 400',
+  );
+  return rows.map((r) => ({ subjectId: r.subject_id, title: r.title }));
 }
 
 /** Delete an assignment. Returns its notification ids so the caller can cancel them. */
