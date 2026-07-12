@@ -25,7 +25,28 @@ Manual entry of assignments / homework / tests, organized by subject, with local
 - ✅ `src/theme.ts` written (colors, subject palette, spacing tokens)
 - ✅ **Layer 1 code complete**: `src/types.ts`, `src/db/database.ts` (SQLite, `PRAGMA user_version` migrations, CRUD), `src/notifications.ts` (permission, Android channel, evening-before 6:00 PM + morning-of 7:30 AM reminders), all five screens, `AssignmentRow`/`EmptyState`, typed navigation (`src/navigation.ts`), `App.tsx` (bottom tabs + native stack, DB init on mount)
 - ✅ Validated: `npx tsc --noEmit` clean (strict); `npx expo export --platform android` bundles clean (Metro + Hermes)
-- ⬜ **Not yet run on a real device/simulator** — no Android/iOS tooling in the dev environment. Next: open in Expo Go / dev build and exercise the create-subject → add-assignment → Today → complete flow and confirm reminders fire.
+- ✅ EAS build config prepared (2026-07-12): `expo-dev-client` installed, `eas.json` (development / preview / production profiles), `app.json` set up for Android (`com.wilbergr.classtrack`, `versionCode`, notification + dev-client plugins). Validated: `npx expo config --type public` parses, `npx tsc --noEmit` clean, `npx expo-doctor` 20/20. **No account login, EAS project, or cloud build was performed** — schema was verified against current EAS docs, but only your first real `eas build` proves it end-to-end.
+- ⬜ **Not yet run on a real device/simulator** — no Android/iOS tooling in the dev environment. Next: follow the runbook below, then exercise the create-subject → add-assignment → Today → complete flow and confirm reminders fire.
+
+## Android dev build — runbook (owner, one-time setup)
+
+Steps 1, 3, and 4 are **interactive and account-bound** — they must be done by you, logged into your own (free) Expo account.
+
+1. **Create a free Expo account** at https://expo.dev/signup (interactive, browser).
+2. Install the EAS CLI: `npm install -g eas-cli` (or prefix every `eas` command below with `npx`).
+3. `eas login` (interactive — your Expo credentials).
+4. `eas build --profile development --platform android`
+   - First run will prompt to **create the EAS project** and write `extra.eas.projectId` into `app.json` — that's expected; commit that change. (`projectId` was deliberately left out of the repo because it's bound to your account.)
+   - Also expected on first run: EAS offers to generate an Android keystore for you — accept the default (stored on EAS servers).
+   - The `development` profile is configured to produce a directly-installable **APK** (not an AAB).
+5. When the build finishes, open the build page link (or scan the QR code), **download the APK on the phone**, enable "Install unknown apps" for your browser when prompted, and install it.
+6. On your computer: `npx expo start --dev-client`, then open the ClassTrack dev build on the phone and connect (same Wi-Fi; scan the QR code, or use `--tunnel` if the network blocks LAN discovery).
+
+Later builds: `preview` profile = shareable internal APK; `production` = store-ready AAB. `eas.json` sets `appVersionSource: "local"`, so bump `android.versionCode` in `app.json` by hand before store builds.
+
+Known gaps (deliberate, note before shipping):
+- No custom **notification icon** — the `expo-notifications` plugin is registered without options; Android will use a default. To fix later: add a 96×96 all-white transparent PNG under `assets/` and set it via the plugin options (`[ "expo-notifications", { "icon": "./assets/notification-icon.png", "color": "#..." } ]`).
+- No **splash screen** config — `assets/splash-icon.png` exists but is unreferenced; the build uses Expo's default splash. Configure via the `expo-splash-screen` plugin when polish matters.
 
 ## Git & GitHub
 - Repo-local identity set to **wilbergr / wilbergr@users.noreply.github.com** (do NOT use the work email gwilber@wilshire.com — public repo).
