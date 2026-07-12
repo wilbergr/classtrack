@@ -20,7 +20,7 @@ import { playSound } from '../feedback';
 import { awardCaptureAsync } from '../gamification/engine';
 import { refreshAssignmentRemindersAsync } from '../notifications';
 import { getSettingAsync, setSettingAsync } from '../settings';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 import type { AssignmentDraft } from '../navigation';
 import type { AssignmentType, Subject } from '../types';
 import { ASSIGNMENT_TYPES, ASSIGNMENT_TYPE_LABELS } from '../types';
@@ -58,6 +58,8 @@ interface Props {
 }
 
 export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState<number | null>(null);
@@ -311,7 +313,7 @@ function inferSubject(
   return null;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   backdropTouch: { flex: 1 },
   sheet: {

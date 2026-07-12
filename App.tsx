@@ -1,16 +1,15 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import SparkBurst from './src/components/SparkBurst';
 import { getDb } from './src/db/database';
+import { settleMomentumAsync } from './src/gamification/engine';
 import type { RootStackParamList, TabParamList } from './src/navigation';
 import { initNotificationsAsync, refreshDailyDigestsAsync } from './src/notifications';
-import { getSettingAsync, loadSettingsAsync } from './src/settings';
-import { settleMomentumAsync } from './src/gamification/engine';
 import AssignmentEditScreen from './src/screens/AssignmentEditScreen';
 import OnboardingScreen, { ONBOARDED_KEY } from './src/screens/OnboardingScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
@@ -18,22 +17,11 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import SubjectDetailScreen from './src/screens/SubjectDetailScreen';
 import SubjectsScreen from './src/screens/SubjectsScreen';
 import TodayScreen from './src/screens/TodayScreen';
-import { colors } from './src/theme';
+import { getSettingAsync, loadSettingsAsync } from './src/settings';
+import { ThemeProvider, useTheme, type ThemeColors } from './src/theme';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
-const navTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: colors.primary,
-    background: colors.bg,
-    card: colors.card,
-    text: colors.text,
-    border: colors.border,
-  },
-};
 
 const TAB_ICONS: Record<keyof TabParamList, string> = {
   Today: '📅',
@@ -46,6 +34,7 @@ function TabIcon({ name, focused }: { name: keyof TabParamList; focused: boolean
 }
 
 function Tabs() {
+  const { colors } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -62,9 +51,34 @@ function Tabs() {
 }
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
+  );
+}
+
+function AppShell() {
+  const { colors, dark } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [onboarded, setOnboarded] = useState(true);
+
+  const navTheme = useMemo(() => {
+    const base = dark ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: colors.primary,
+        background: colors.bg,
+        card: colors.card,
+        text: colors.text,
+        border: colors.border,
+      },
+    };
+  }, [colors, dark]);
 
   useEffect(() => {
     (async () => {
@@ -102,12 +116,17 @@ export default function App() {
   }
 
   if (!onboarded) {
-    return <OnboardingScreen onDone={() => setOnboarded(true)} />;
+    return (
+      <>
+        <StatusBar style={dark ? 'light' : 'dark'} />
+        <OnboardingScreen onDone={() => setOnboarded(true)} />
+      </>
+    );
   }
 
   return (
     <NavigationContainer theme={navTheme}>
-      <StatusBar style="dark" />
+      <StatusBar style={dark ? 'light' : 'dark'} />
       <Stack.Navigator>
         <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
         <Stack.Screen name="SubjectDetail" component={SubjectDetailScreen} options={{ title: '' }} />
@@ -123,7 +142,7 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   splash: {
     flex: 1,
     backgroundColor: colors.bg,

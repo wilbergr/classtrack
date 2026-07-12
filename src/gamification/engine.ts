@@ -292,6 +292,49 @@ export async function getWeekSummaryAsync(now: number = Date.now()): Promise<Wee
   return { earned: earned?.v ?? 0, completed: completed?.v ?? 0, captured: captured?.v ?? 0 };
 }
 
+// ---------- the Spark shop ----------
+
+export type SpendResult = 'ok' | 'insufficient' | 'owned';
+
+/**
+ * Buy a cosmetic: records the unlock, appends a negative 'spend' ledger row,
+ * and bumps `progress.spent`. Spending never touches `lifetime`, so levels
+ * never drop — no loss aversion anywhere in the system.
+ */
+export async function spendAsync(itemKey: string, cost: number): Promise<SpendResult> {
+  const db = await getDb();
+  const p = await ensureProgressRowAsync();
+  const owned = await db.getFirstAsync<{ item_key: string }>(
+    'SELECT item_key FROM unlocks WHERE item_key = ?',
+    itemKey,
+  );
+  if (owned) return 'owned';
+  if (p.lifetime - p.spent < cost) return 'insufficient';
+  const now = Date.now();
+  await db.runAsync(
+    'INSERT INTO unlocks (item_key, cost, acquired_at) VALUES (?, ?, ?)',
+    itemKey,
+    cost,
+    now,
+  );
+  await db.runAsync(
+    "INSERT INTO ledger (kind, amount, assignment_id, item_key, day, created_at) VALUES ('spend', ?, NULL, ?, ?, ?)",
+    -cost,
+    itemKey,
+    startOfDay(now),
+    now,
+  );
+  await db.runAsync('UPDATE progress SET spent = spent + ? WHERE id = 1', cost);
+  emitProgressChanged();
+  return 'ok';
+}
+
+export async function listUnlocksAsync(): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ item_key: string }>('SELECT item_key FROM unlocks');
+  return rows.map((r) => r.item_key);
+}
+
 /** Rebuild the `progress` rollup from the ledger (recovery path; not used in normal flow). */
 export async function rebuildProgressFromLedgerAsync(): Promise<void> {
   const db = await getDb();

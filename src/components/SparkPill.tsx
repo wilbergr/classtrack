@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -12,7 +12,7 @@ import { onProgressChanged, onSpark } from '../gamification/events';
 import { getProgressAsync } from '../gamification/engine';
 import { levelProgress } from '../gamification/levels';
 import { useCalmMotion } from '../hooks';
-import { colors, spacing } from '../theme';
+import { spacing, useTheme, type ThemeColors } from '../theme';
 
 const RING_SIZE = 26;
 const RING_STROKE = 3;
@@ -25,6 +25,8 @@ interface Props {
 
 /** Compact Spark counter + level ring for the Today header. */
 export default function SparkPill({ onPress }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [balance, setBalance] = useState(0);
   const [level, setLevel] = useState(1);
   const [fraction, setFraction] = useState(0);
@@ -96,7 +98,7 @@ export default function SparkPill({ onPress }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

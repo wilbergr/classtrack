@@ -1,8 +1,19 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { VOICE_PACK_META } from '../gamification/copy';
+import { listUnlocksAsync } from '../gamification/engine';
 import { useSettings } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import {
@@ -11,8 +22,8 @@ import {
   refreshDailyDigestsAsync,
 } from '../notifications';
 import { updateSettingsAsync } from '../settings';
-import { colors, radius, spacing } from '../theme';
-import type { VoicePackId } from '../types';
+import { radius, spacing, THEME_META, useTheme, type ThemeColors } from '../theme';
+import type { CompanionId, Vibe, VoicePackId } from '../types';
 
 type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unknown';
 
@@ -23,18 +34,37 @@ const PERMISSION_LABEL: Record<PermissionState, string> = {
   unknown: '…',
 };
 
-export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
-  const [permission, setPermission] = useState<PermissionState>('unknown');
-  const settings = useSettings();
+const VIBE_OPTIONS: { id: Vibe; label: string }[] = [
+  { id: 'hype', label: 'Big' },
+  { id: 'balanced', label: 'Medium' },
+  { id: 'chill', label: 'Quiet' },
+];
 
-  const setVoicePack = useCallback(async (voicePack: VoicePackId) => {
-    await updateSettingsAsync({ voicePack });
-    // Future reminders re-roll on their next edit; digests re-roll now.
-    refreshDailyDigestsAsync().catch(() => undefined);
-  }, []);
+const DARK_OPTIONS: { id: 'system' | 'on' | 'off'; label: string }[] = [
+  { id: 'system', label: 'System' },
+  { id: 'on', label: 'Dark' },
+  { id: 'off', label: 'Light' },
+];
+
+const COMPANION_OPTIONS: { id: CompanionId; label: string }[] = [
+  { id: 'wisp', label: 'Wisp' },
+  { id: 'pip', label: 'Pip' },
+  { id: 'juno', label: 'Juno' },
+  { id: 'unit7', label: 'Unit-7' },
+  { id: 'none', label: 'None' },
+];
+
+export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const settings = useSettings();
+  const [permission, setPermission] = useState<PermissionState>('unknown');
+  const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+  const [name, setName] = useState(settings.companionName);
 
   const refresh = useCallback(async () => {
     setPermission(await getNotificationPermissionAsync());
+    setUnlocked(new Set(await listUnlocksAsync()));
   }, []);
 
   useFocusEffect(
@@ -42,6 +72,10 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
       refresh();
     }, [refresh]),
   );
+
+  useEffect(() => {
+    setName(settings.companionName);
+  }, [settings.companionName]);
 
   const enable = useCallback(async () => {
     if (permission === 'denied') {
@@ -53,8 +87,166 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
     await refresh();
   }, [permission, refresh]);
 
+  const setVoicePack = useCallback(async (voicePack: VoicePackId) => {
+    await updateSettingsAsync({ voicePack });
+    // Future reminders re-roll on their next edit; digests re-roll now.
+    refreshDailyDigestsAsync().catch(() => undefined);
+  }, []);
+
+  /** Vibe presets sound + default voice; both stay individually adjustable. */
+  const setVibe = useCallback(async (vibe: Vibe) => {
+    await updateSettingsAsync({
+      vibe,
+      soundOn: vibe === 'hype',
+      voicePack: vibe === 'hype' ? 'ember' : 'sage',
+    });
+    refreshDailyDigestsAsync().catch(() => undefined);
+  }, []);
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.sectionTitle}>Style</Text>
+      <View style={styles.card}>
+        <Text style={styles.fieldLabel}>Theme</Text>
+        <View style={styles.chipWrap}>
+          {THEME_META.map((t) => {
+            const available = t.free || unlocked.has(`theme:${t.id}`);
+            const selected = settings.themeId === t.id;
+            return (
+              <Pressable
+                key={t.id}
+                onPress={() => available && updateSettingsAsync({ themeId: t.id })}
+                disabled={!available}
+                style={[
+                  styles.chip,
+                  selected && styles.chipSelected,
+                  !available && styles.chipLocked,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected, disabled: !available }}
+              >
+                <View style={[styles.swatch, { backgroundColor: t.accent }]} />
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {available ? t.label : `${t.label} ✦${t.cost}`}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.hint}>Locked themes unlock in the Spark shop (tap your Spark pill).</Text>
+
+        <Text style={styles.fieldLabel}>Celebration size</Text>
+        <View style={styles.chipWrap}>
+          {VIBE_OPTIONS.map((v) => {
+            const selected = settings.vibe === v.id;
+            return (
+              <Pressable
+                key={v.id}
+                onPress={() => setVibe(v.id)}
+                style={[styles.chip, selected && styles.chipSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {v.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={styles.fieldLabel}>Appearance</Text>
+        <View style={styles.chipWrap}>
+          {DARK_OPTIONS.map((d) => {
+            const selected = settings.darkMode === d.id;
+            return (
+              <Pressable
+                key={d.id}
+                onPress={() => updateSettingsAsync({ darkMode: d.id })}
+                style={[styles.chip, selected && styles.chipSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {d.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.switchRow}>
+          <Text style={styles.rowLabel}>Sound</Text>
+          <Switch
+            value={settings.soundOn}
+            onValueChange={(v) => void updateSettingsAsync({ soundOn: v })}
+          />
+        </View>
+        <View style={styles.switchRow}>
+          <Text style={styles.rowLabel}>Haptics</Text>
+          <Switch
+            value={settings.hapticsOn}
+            onValueChange={(v) => void updateSettingsAsync({ hapticsOn: v })}
+          />
+        </View>
+        <View style={styles.switchRow}>
+          <Text style={styles.rowLabel}>Reduce effects</Text>
+          <Switch
+            value={settings.reduceEffects}
+            onValueChange={(v) => void updateSettingsAsync({ reduceEffects: v })}
+          />
+        </View>
+        <Text style={styles.hint}>
+          Reduce effects keeps every feature but calms all motion and particles. Your system's
+          reduced-motion setting is always respected too.
+        </Text>
+      </View>
+
+      <Text style={styles.sectionTitle}>Sidekick</Text>
+      <View style={styles.card}>
+        <View style={styles.chipWrap}>
+          {COMPANION_OPTIONS.map((c) => {
+            const selected = settings.companion === c.id;
+            return (
+              <Pressable
+                key={c.id}
+                onPress={() =>
+                  updateSettingsAsync({
+                    companion: c.id,
+                    ...(c.id !== 'none' && !settings.companionName
+                      ? { companionName: c.label }
+                      : {}),
+                  })
+                }
+                style={[styles.chip, selected && styles.chipSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {c.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {settings.companion !== 'none' && (
+          <>
+            <Text style={styles.fieldLabel}>Name</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              onEndEditing={() =>
+                updateSettingsAsync({ companionName: name.trim() || settings.companionName })
+              }
+              placeholder="Name your sidekick"
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+              maxLength={24}
+            />
+          </>
+        )}
+      </View>
+
       <Text style={styles.sectionTitle}>Reminders</Text>
       <View style={styles.card}>
         <View style={styles.row}>
@@ -131,7 +323,7 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   sectionTitle: {
@@ -158,6 +350,46 @@ const styles = StyleSheet.create({
   },
   rowLabel: { color: colors.text, fontSize: 15, fontWeight: '600' },
   rowValue: { color: colors.textMuted, fontSize: 15, flexShrink: 1, textAlign: 'right' },
+  fieldLabel: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bg,
+    borderRadius: 999,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    minHeight: 44,
+  },
+  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipLocked: { opacity: 0.55 },
+  chipText: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  chipTextSelected: { color: colors.primaryText },
+  swatch: { width: 14, height: 14, borderRadius: 7, marginRight: spacing.xs },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.bg,
+  },
   button: {
     backgroundColor: colors.primary,
     borderRadius: radius.sm,

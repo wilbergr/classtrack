@@ -1,20 +1,21 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import AssignmentRow from '../components/AssignmentRow';
 import CompanionHeader from '../components/CompanionHeader';
 import EmptyState from '../components/EmptyState';
+import HorizonStrip from '../components/HorizonStrip';
 import QuickAddSheet from '../components/QuickAddSheet';
 import SparkPill from '../components/SparkPill';
 import { listOpenAssignmentsWithSubject, listSubjects, setAssignmentCompleted } from '../db/database';
-import { dueStatus } from '../dates';
+import { addDays, dueStatus, startOfDay } from '../dates';
 import { awardCompleteAsync } from '../gamification/engine';
 import { onSpark } from '../gamification/events';
 import { useCalmMotion } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import { refreshAssignmentRemindersAsync } from '../notifications';
-import { colors, spacing } from '../theme';
+import { spacing, useTheme, type ThemeColors } from '../theme';
 import type { AssignmentWithSubject } from '../types';
 
 interface Section {
@@ -24,11 +25,14 @@ interface Section {
 }
 
 export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [sections, setSections] = useState<Section[]>([]);
   const [hasSubjects, setHasSubjects] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const [dayState, setDayState] = useState({ hasOverdue: false, hasDueToday: false });
+  const [dayLoads, setDayLoads] = useState<number[]>([]);
   const calm = useCalmMotion();
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,7 +45,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
         </View>
       ),
     });
-  }, [navigation, dayState]);
+  }, [navigation, dayState, styles]);
 
   // Flash freshly-captured assignments when they land in the list.
   useEffect(() => {
@@ -80,8 +84,16 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
     );
     setHasSubjects(subjects.length > 0);
     setDayState({ hasOverdue: overdue.length > 0, hasDueToday: today.length > 0 });
+    // Due-load per day for the 7-day horizon strip.
+    const dayZero = startOfDay(Date.now());
+    const loads = Array.from({ length: 7 }, () => 0);
+    for (const a of assignments) {
+      const idx = Math.round((startOfDay(a.dueAt) - dayZero) / (24 * 3600 * 1000));
+      if (idx >= 0 && idx < 7) loads[idx] += 1;
+    }
+    setDayLoads(loads);
     setLoaded(true);
-  }, []);
+  }, [colors]);
 
   useFocusEffect(
     useCallback(() => {
@@ -127,6 +139,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
 
   return (
     <View style={styles.container}>
+      <HorizonStrip loads={dayLoads} />
       <SectionList
         sections={sections}
         keyExtractor={(item) => String(item.id)}
@@ -186,7 +199,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   listContent: { paddingTop: spacing.md, paddingBottom: 96, flexGrow: 1 },

@@ -71,6 +71,8 @@ export type Vibe = 'hype' | 'balanced' | 'chill';
 export type CompanionId = 'wisp' | 'pip' | 'juno' | 'unit7' | 'none';
 export type VoicePackId = 'ember' | 'sage' | 'dot' | 'plain';
 export type ThemeId = 'pop' | 'slate' | 'midnight' | 'neon' | 'paper' | 'mono';
+/** How level-ups celebrate (shop-unlockable beyond 'burst'). */
+export type CelebrationStyle = 'burst' | 'glow' | 'rings';
 
 export interface AppSettings {
   vibe: Vibe;
@@ -82,4 +84,7 @@ export interface AppSettings {
   soundOn: boolean;
   hapticsOn: boolean;
   reduceEffects: boolean;
+  celebrationStyle: CelebrationStyle;
+  /** Equipped companion accessory item keys. */
+  accessories: string[];
 }

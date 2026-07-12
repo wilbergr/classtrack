@@ -64,6 +64,7 @@ export default function CompanionHeader({ hasOverdue, hasDueToday }: Props) {
         mood={mood}
         stage={stageForLevel(levelForLifetime(progress.lifetime))}
         size={34}
+        accessories={settings.accessories}
       />
     </View>
   );

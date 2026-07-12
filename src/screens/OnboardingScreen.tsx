@@ -2,7 +2,7 @@
 // Pre-selected to the playful set (Big / Pop / Wisp); the calm, quiet
 // experience is the opt-down. Fully skippable — skipping keeps the defaults.
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +16,7 @@ import {
 
 import Companion, { EnergyMeter } from '../components/Companion';
 import { setSettingAsync, updateSettingsAsync } from '../settings';
-import { colors, radius, spacing, THEME_META } from '../theme';
+import { radius, spacing, THEME_META, useTheme, type ThemeColors } from '../theme';
 import type { CompanionId, ThemeId, Vibe, VoicePackId } from '../types';
 
 export const ONBOARDED_KEY = 'onboarded';
@@ -51,6 +51,8 @@ interface Props {
 }
 
 export default function OnboardingScreen({ onDone }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [step, setStep] = useState(0);
   const [vibe, setVibe] = useState<Vibe>('hype');
   const [themeId, setThemeId] = useState<ThemeId>('pop');
@@ -102,6 +104,7 @@ export default function OnboardingScreen({ onDone }: Props) {
                 blurb={v.blurb}
                 selected={vibe === v.id}
                 onPress={() => setVibe(v.id)}
+                styles={styles}
               />
             ))}
           </>
@@ -120,6 +123,7 @@ export default function OnboardingScreen({ onDone }: Props) {
                 disabled={!t.free}
                 swatch={t.accent}
                 onPress={() => setThemeId(t.id)}
+                styles={styles}
               />
             ))}
           </>
@@ -200,6 +204,7 @@ function OptionRow({
   disabled,
   swatch,
   onPress,
+  styles,
 }: {
   label: string;
   blurb: string;
@@ -207,6 +212,7 @@ function OptionRow({
   disabled?: boolean;
   swatch?: string;
   onPress: () => void;
+  styles: ReturnType<typeof makeStyles>;
 }) {
   return (
     <Pressable
@@ -226,7 +232,7 @@ function OptionRow({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   topBar: {
     flexDirection: 'row',

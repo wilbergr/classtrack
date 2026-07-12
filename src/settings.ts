@@ -20,6 +20,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   soundOn: true,
   hapticsOn: true,
   reduceEffects: false,
+  celebrationStyle: 'burst',
+  accessories: [],
 };
 
 const APP_KEY = 'app';

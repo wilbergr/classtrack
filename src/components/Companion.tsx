@@ -16,7 +16,7 @@ import Svg, { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'reac
 
 import type { CompanionMood } from '../gamification/companion';
 import { useCalmMotion } from '../hooks';
-import { colors, companionTints } from '../theme';
+import { useTheme, type ThemeColors } from '../theme';
 import type { CompanionId } from '../types';
 
 export type CompanionSpecies = Exclude<CompanionId, 'none'>;
@@ -26,9 +26,12 @@ interface Props {
   mood: CompanionMood;
   stage: 1 | 2 | 3;
   size: number;
+  /** Equipped accessory item keys (shop unlocks): scarf / halo / bowtie. */
+  accessories?: string[];
 }
 
-export default function Companion({ species, mood, stage, size }: Props) {
+export default function Companion({ species, mood, stage, size, accessories = [] }: Props) {
+  const { colors } = useTheme();
   const calm = useCalmMotion();
   const breath = useSharedValue(1);
   const hop = useSharedValue(0);
@@ -85,11 +88,12 @@ export default function Companion({ species, mood, stage, size }: Props) {
       importantForAccessibility="no-hide-descendants"
     >
       <Svg width={size} height={size} viewBox="0 0 100 100">
-        {stage >= 3 && <Aura tint={companionTints[species]} />}
-        {species === 'wisp' && <Wisp mood={mood} stage={stage} eyesClosed={eyesClosed} />}
-        {species === 'pip' && <Pip mood={mood} stage={stage} eyesClosed={eyesClosed} />}
-        {species === 'juno' && <Juno mood={mood} stage={stage} eyesClosed={eyesClosed} />}
-        {species === 'unit7' && <Unit7 mood={mood} stage={stage} eyesClosed={eyesClosed} />}
+        {stage >= 3 && <Aura tint={colors.companion[species]} />}
+        {species === 'wisp' && <Wisp mood={mood} stage={stage} eyesClosed={eyesClosed} c={colors} />}
+        {species === 'pip' && <Pip mood={mood} stage={stage} eyesClosed={eyesClosed} c={colors} />}
+        {species === 'juno' && <Juno mood={mood} stage={stage} eyesClosed={eyesClosed} c={colors} />}
+        {species === 'unit7' && <Unit7 mood={mood} stage={stage} eyesClosed={eyesClosed} c={colors} />}
+        <Accessories keys={accessories} c={colors} />
         {mood === 'dozing' && (
           <SvgText x={74} y={22} fontSize={16} fontWeight="bold" fill={colors.textMuted}>
             z
@@ -104,10 +108,35 @@ interface ShellProps {
   mood: CompanionMood;
   stage: 1 | 2 | 3;
   eyesClosed: boolean;
+  c: ThemeColors;
 }
 
 function Aura({ tint }: { tint: string }) {
   return <Circle cx={50} cy={56} r={45} stroke={tint} strokeOpacity={0.3} strokeWidth={2.5} fill="none" />;
+}
+
+/** Extra SVG groups for equipped shop accessories (species-generic). */
+function Accessories({ keys, c }: { keys: string[]; c: ThemeColors }) {
+  return (
+    <G>
+      {keys.includes('halo') && (
+        <Ellipse cx={50} cy={7} rx={16} ry={4.5} stroke={c.spark} strokeWidth={3} fill="none" />
+      )}
+      {keys.includes('scarf') && (
+        <G fill={c.danger}>
+          <Path d="M 30 80 Q 50 90 70 80 L 70 87 Q 50 96 30 87 Z" />
+          <Rect x={60} y={82} width={8} height={14} rx={3} />
+        </G>
+      )}
+      {keys.includes('bowtie') && (
+        <G fill={c.primary}>
+          <Path d="M 50 84 L 38 78 L 38 90 Z" />
+          <Path d="M 50 84 L 62 78 L 62 90 Z" />
+          <Circle cx={50} cy={84} r={3} />
+        </G>
+      )}
+    </G>
+  );
 }
 
 /** Round eyes (closed = gentle arcs; celebrating = happy arcs). */
@@ -115,13 +144,13 @@ function Eyes({
   y,
   mood,
   closed,
-  color = colors.text,
+  color,
   r = 4.5,
 }: {
   y: number;
   mood: CompanionMood;
   closed: boolean;
-  color?: string;
+  color: string;
   r?: number;
 }) {
   const xs = [41, 59];
@@ -167,7 +196,7 @@ function Eyes({
   );
 }
 
-function Mouth({ y, mood, color = colors.text }: { y: number; mood: CompanionMood; color?: string }) {
+function Mouth({ y, mood, color }: { y: number; mood: CompanionMood; color: string }) {
   if (mood === 'dozing') {
     return <Line x1={46} y1={y} x2={54} y2={y} stroke={color} strokeWidth={2} strokeLinecap="round" />;
   }
@@ -190,8 +219,8 @@ function Mouth({ y, mood, color = colors.text }: { y: number; mood: CompanionMoo
   );
 }
 
-function Wisp({ mood, stage, eyesClosed }: ShellProps) {
-  const tint = companionTints.wisp;
+function Wisp({ mood, stage, eyesClosed, c }: ShellProps) {
+  const tint = c.companion.wisp;
   return (
     <G>
       {stage >= 2 && (
@@ -205,20 +234,20 @@ function Wisp({ mood, stage, eyesClosed }: ShellProps) {
         fill={tint}
       />
       <Ellipse cx={50} cy={64} rx={17} ry={15} fill="#FFFFFF" opacity={0.4} />
-      <Eyes y={58} mood={mood} closed={eyesClosed} />
-      <Mouth y={70} mood={mood} />
+      <Eyes y={58} mood={mood} closed={eyesClosed} color={c.text} />
+      <Mouth y={70} mood={mood} color={c.text} />
     </G>
   );
 }
 
-function Pip({ mood, stage, eyesClosed }: ShellProps) {
-  const tint = companionTints.pip;
+function Pip({ mood, stage, eyesClosed, c }: ShellProps) {
+  const tint = c.companion.pip;
   return (
     <G>
       {stage >= 2 && (
         <G>
           <Line x1={50} y1={26} x2={50} y2={16} stroke={tint} strokeWidth={2.5} />
-          <Ellipse cx={55} cy={13} rx={6} ry={4} fill={colors.done} />
+          <Ellipse cx={55} cy={13} rx={6} ry={4} fill={c.done} />
         </G>
       )}
       <Ellipse cx={50} cy={59} rx={33} ry={31} fill={tint} />
@@ -231,8 +260,8 @@ function Pip({ mood, stage, eyesClosed }: ShellProps) {
   );
 }
 
-function Juno({ mood, stage, eyesClosed }: ShellProps) {
-  const tint = companionTints.juno;
+function Juno({ mood, stage, eyesClosed, c }: ShellProps) {
+  const tint = c.companion.juno;
   return (
     <G>
       <Path d="M 26 44 L 22 18 L 42 32 Z" fill={tint} />
@@ -260,12 +289,12 @@ function Juno({ mood, stage, eyesClosed }: ShellProps) {
   );
 }
 
-function Unit7({ mood, stage, eyesClosed }: ShellProps) {
-  const tint = companionTints.unit7;
+function Unit7({ mood, stage, eyesClosed, c }: ShellProps) {
+  const tint = c.companion.unit7;
   return (
     <G>
       <Line x1={50} y1={30} x2={50} y2={16} stroke={tint} strokeWidth={3} />
-      <Circle cx={50} cy={13} r={4.5} fill={mood === 'dozing' ? colors.textMuted : colors.spark} />
+      <Circle cx={50} cy={13} r={4.5} fill={mood === 'dozing' ? c.textMuted : c.spark} />
       {stage >= 2 && (
         <G fill={tint}>
           <Rect x={12} y={50} width={9} height={16} rx={3} />
@@ -273,14 +302,14 @@ function Unit7({ mood, stage, eyesClosed }: ShellProps) {
         </G>
       )}
       <Rect x={22} y={30} width={56} height={52} rx={12} fill={tint} />
-      <Rect x={28} y={38} width={44} height={36} rx={8} fill={colors.text} opacity={0.85} />
+      <Rect x={28} y={38} width={44} height={36} rx={8} fill={c.text} opacity={0.85} />
       {eyesClosed ? (
-        <G fill={colors.spark}>
+        <G fill={c.spark}>
           <Rect x={36} y={52} width={10} height={2.5} rx={1.2} />
           <Rect x={54} y={52} width={10} height={2.5} rx={1.2} />
         </G>
       ) : (
-        <G fill={colors.spark}>
+        <G fill={c.spark}>
           <Rect
             x={36}
             y={mood === 'alert' ? 46 : 48}
@@ -300,13 +329,13 @@ function Unit7({ mood, stage, eyesClosed }: ShellProps) {
       {mood === 'celebrating' ? (
         <Path
           d="M 40 64 Q 50 70 60 64"
-          stroke={colors.spark}
+          stroke={c.spark}
           strokeWidth={2.5}
           strokeLinecap="round"
           fill="none"
         />
       ) : (
-        <Line x1={42} y1={66} x2={58} y2={66} stroke={colors.spark} strokeWidth={2.5} strokeLinecap="round" />
+        <Line x1={42} y1={66} x2={58} y2={66} stroke={c.spark} strokeWidth={2.5} strokeLinecap="round" />
       )}
     </G>
   );
@@ -322,6 +351,7 @@ export function EnergyMeter({
   width: number;
   height?: number;
 }) {
+  const { colors } = useTheme();
   const clamped = Math.max(0.04, Math.min(1, fraction));
   return (
     <Svg width={width} height={height}>

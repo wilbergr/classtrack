@@ -3,11 +3,12 @@
 // Spark pill — deliberately not a fourth tab.
 
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import Companion, { EnergyMeter } from '../components/Companion';
+import SparkShop from '../components/SparkShop';
 import { listOpenAssignmentsWithSubject } from '../db/database';
 import { dueStatus } from '../dates';
 import { deriveMood, stageForLevel, type CompanionMood } from '../gamification/companion';
@@ -23,7 +24,7 @@ import { onProgressChanged, onSpark } from '../gamification/events';
 import { levelProgress } from '../gamification/levels';
 import { useSettings } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 
 const RING_SIZE = 132;
 const RING_STROKE = 10;
@@ -38,6 +39,8 @@ const MOOD_SUMMARY: Record<CompanionMood, string> = {
 };
 
 export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [week, setWeek] = useState<WeekSummary | null>(null);
   const [dayState, setDayState] = useState({ hasOverdue: false, hasDueToday: false });
@@ -95,6 +98,7 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
             mood={mood}
             stage={stageForLevel(lp.level)}
             size={140}
+            accessories={settings.accessories}
           />
           <Text style={styles.companionName} accessibilityLabel={`${settings.companionName} is ${MOOD_SUMMARY[mood]}`}>
             {settings.companionName} is {MOOD_SUMMARY[mood]}
@@ -188,27 +192,27 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
       <Text style={styles.sectionTitle}>This week</Text>
       <View style={styles.card}>
         <View style={styles.weekRow}>
-          <WeekStat value={week?.earned ?? 0} label="sparks" accent />
-          <WeekStat value={week?.completed ?? 0} label="finished" />
-          <WeekStat value={week?.captured ?? 0} label="added" />
+          <View style={styles.weekStat}>
+            <Text style={[styles.weekValue, { color: colors.spark }]}>✦ {week?.earned ?? 0}</Text>
+            <Text style={styles.weekLabel}>sparks</Text>
+          </View>
+          <View style={styles.weekStat}>
+            <Text style={styles.weekValue}>{week?.completed ?? 0}</Text>
+            <Text style={styles.weekLabel}>finished</Text>
+          </View>
+          <View style={styles.weekStat}>
+            <Text style={styles.weekValue}>{week?.captured ?? 0}</Text>
+            <Text style={styles.weekLabel}>added</Text>
+          </View>
         </View>
       </View>
+
+      <SparkShop balance={progress.balance} />
     </ScrollView>
   );
 }
 
-function WeekStat({ value, label, accent }: { value: number; label: string; accent?: boolean }) {
-  return (
-    <View style={styles.weekStat}>
-      <Text style={[styles.weekValue, accent && { color: colors.spark }]}>
-        {accent ? `✦ ${value}` : value}
-      </Text>
-      <Text style={styles.weekLabel}>{label}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   companionBlock: { alignItems: 'center', marginBottom: spacing.lg },

@@ -1,6 +1,6 @@
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useHeaderHeight } from '@react-navigation/elements';
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -25,7 +25,7 @@ import { formatDayLabel, formatTime } from '../dates';
 import { awardCaptureAsync } from '../gamification/engine';
 import type { RootStackScreenProps } from '../navigation';
 import { cancelRemindersAsync, refreshAssignmentRemindersAsync } from '../notifications';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 import type { AssignmentType, Subject } from '../types';
 import { ASSIGNMENT_TYPES, ASSIGNMENT_TYPE_LABELS } from '../types';
 
@@ -41,6 +41,8 @@ export default function AssignmentEditScreen({
   navigation,
   route,
 }: RootStackScreenProps<'AssignmentEdit'>) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const assignmentId = route.params?.assignmentId;
   const presetSubjectId = route.params?.subjectId;
   const draft = route.params?.draft;
@@ -292,7 +294,7 @@ export default function AssignmentEditScreen({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   fieldLabel: {
