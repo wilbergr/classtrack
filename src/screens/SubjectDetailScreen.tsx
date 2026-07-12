@@ -5,6 +5,8 @@ import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import AssignmentRow from '../components/AssignmentRow';
 import EmptyState from '../components/EmptyState';
 import { getSubject, listAssignmentsForSubject, setAssignmentCompleted } from '../db/database';
+import { awardCompleteAsync } from '../gamification/engine';
+import { useCalmMotion } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { refreshAssignmentRemindersAsync } from '../notifications';
 import { colors, spacing } from '../theme';
@@ -23,6 +25,7 @@ export default function SubjectDetailScreen({
   const [subject, setSubject] = useState<Subject | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const calm = useCalmMotion();
 
   const load = useCallback(async () => {
     const s = await getSubject(subjectId);
@@ -65,11 +68,16 @@ export default function SubjectDetailScreen({
 
   const toggleComplete = useCallback(
     async (a: AssignmentWithSubject) => {
-      await setAssignmentCompleted(a.id, !a.completed);
+      const nowCompleted = !a.completed;
+      await setAssignmentCompleted(a.id, nowCompleted);
       await refreshAssignmentRemindersAsync(a.id);
+      if (nowCompleted) {
+        await awardCompleteAsync({ id: a.id, dueAt: a.dueAt });
+        if (!calm) await new Promise((r) => setTimeout(r, 450));
+      }
       await load();
     },
-    [load],
+    [load, calm],
   );
 
   return (

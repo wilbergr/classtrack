@@ -27,7 +27,8 @@
       "expo-sqlite",
       "expo-dev-client",
       "expo-notifications",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-audio"
     ],
     "extra": {
       "eas": {

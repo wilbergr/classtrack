@@ -12,6 +12,8 @@ export const colors = {
   today: '#F5A623',
   upcoming: '#3B6FF5',
   done: '#16A34A',
+  spark: '#F0B429', // Spark accents (pill, toast, level ring)
+  highlight: '#E3EBFE', // freshly-captured row flash
 };
 
 // Palette offered when creating a subject.

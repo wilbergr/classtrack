@@ -1,11 +1,15 @@
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import AssignmentRow from '../components/AssignmentRow';
 import EmptyState from '../components/EmptyState';
+import SparkPill from '../components/SparkPill';
 import { listOpenAssignmentsWithSubject, listSubjects, setAssignmentCompleted } from '../db/database';
 import { dueStatus } from '../dates';
+import { awardCompleteAsync } from '../gamification/engine';
+import { onSpark } from '../gamification/events';
+import { useCalmMotion } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import { refreshAssignmentRemindersAsync } from '../notifications';
 import { colors, spacing } from '../theme';
@@ -21,6 +25,27 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
   const [sections, setSections] = useState<Section[]>([]);
   const [hasSubjects, setHasSubjects] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [highlightId, setHighlightId] = useState<number | null>(null);
+  const calm = useCalmMotion();
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerRight: () => <SparkPill /> });
+  }, [navigation]);
+
+  // Flash freshly-captured assignments when they land in the list.
+  useEffect(() => {
+    const off = onSpark((e) => {
+      if (e.capturedAssignmentId == null) return;
+      setHighlightId(e.capturedAssignmentId);
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+      highlightTimer.current = setTimeout(() => setHighlightId(null), 1600);
+    });
+    return () => {
+      off();
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    };
+  }, []);
 
   const load = useCallback(async () => {
     const [assignments, subjects] = await Promise.all([
@@ -55,11 +80,17 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
 
   const toggleComplete = useCallback(
     async (a: AssignmentWithSubject) => {
-      await setAssignmentCompleted(a.id, !a.completed);
+      const nowCompleted = !a.completed;
+      await setAssignmentCompleted(a.id, nowCompleted);
       await refreshAssignmentRemindersAsync(a.id);
+      if (nowCompleted) {
+        await awardCompleteAsync({ id: a.id, dueAt: a.dueAt });
+        // Let the checkbox bloom before the row leaves the list.
+        if (!calm) await new Promise((r) => setTimeout(r, 450));
+      }
       await load();
     },
-    [load],
+    [load, calm],
   );
 
   const addAssignment = useCallback(() => {
@@ -89,6 +120,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
         renderItem={({ item }) => (
           <AssignmentRow
             assignment={item}
+            highlight={item.id === highlightId}
             onPress={() => navigation.navigate('AssignmentEdit', { assignmentId: item.id })}
             onToggleComplete={() => toggleComplete(item)}
           />

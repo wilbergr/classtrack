@@ -5,9 +5,11 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import SparkBurst from './src/components/SparkBurst';
 import { getDb } from './src/db/database';
 import type { RootStackParamList, TabParamList } from './src/navigation';
 import { initNotificationsAsync } from './src/notifications';
+import { loadSettingsAsync } from './src/settings';
 import AssignmentEditScreen from './src/screens/AssignmentEditScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SubjectDetailScreen from './src/screens/SubjectDetailScreen';
@@ -64,6 +66,7 @@ export default function App() {
     (async () => {
       try {
         await getDb(); // open + migrate before any screen queries
+        await loadSettingsAsync();
         await initNotificationsAsync();
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -102,6 +105,7 @@ export default function App() {
           options={{ presentation: 'modal' }}
         />
       </Stack.Navigator>
+      <SparkBurst />
     </NavigationContainer>
   );
 }

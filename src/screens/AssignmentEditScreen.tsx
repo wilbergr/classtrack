@@ -22,6 +22,7 @@ import {
   updateAssignment,
 } from '../db/database';
 import { formatDayLabel, formatTime } from '../dates';
+import { awardCaptureAsync } from '../gamification/engine';
 import type { RootStackScreenProps } from '../navigation';
 import { cancelRemindersAsync, refreshAssignmentRemindersAsync } from '../notifications';
 import { colors, radius, spacing } from '../theme';
@@ -127,6 +128,8 @@ export default function AssignmentEditScreen({
     }
     // Cancels stale reminders and schedules evening-before + morning-of.
     await refreshAssignmentRemindersAsync(id);
+    // Capture Sparks (idempotent per assignment; the burst plays over Today).
+    if (!isEditing) await awardCaptureAsync(id);
     navigation.goBack();
   }, [title, subjectId, type, due, notes, assignmentId, isEditing, navigation]);
 
