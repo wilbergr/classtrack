@@ -36,13 +36,24 @@ Steps 1, 3, and 4 are **interactive and account-bound** — they must be done by
 2. Install the EAS CLI: `npm install -g eas-cli` (or prefix every `eas` command below with `npx`).
 3. `eas login` (interactive — your Expo credentials).
 4. `eas build --profile development --platform android`
-   - First run will prompt to **create the EAS project** and write `extra.eas.projectId` into `app.json` — that's expected; commit that change. (`projectId` was deliberately left out of the repo because it's bound to your account.)
+   - First run will prompt to **create the EAS project** and write `extra.eas.projectId` into `app.json` — that's expected; commit that change. (Done — the projectId is now committed in `app.json`; it's a public identifier, not a secret.)
    - Also expected on first run: EAS offers to generate an Android keystore for you — accept the default (stored on EAS servers).
    - The `development` profile is configured to produce a directly-installable **APK** (not an AAB).
 5. When the build finishes, open the build page link (or scan the QR code), **download the APK on the phone**, enable "Install unknown apps" for your browser when prompted, and install it.
 6. On your computer: `npx expo start --dev-client`, then open the ClassTrack dev build on the phone and connect (same Wi-Fi; scan the QR code, or use `--tunnel` if the network blocks LAN discovery).
 
 Later builds: `preview` profile = shareable internal APK; `production` = store-ready AAB. `eas.json` sets `appVersionSource: "local"`, so bump `android.versionCode` in `app.json` by hand before store builds.
+
+## Troubleshooting: running the dev server on WSL2
+
+Lessons from the first real device run:
+
+- **Never run the dev server with `sudo`.** `sudo npx expo start …` crashes with `Running as root without --no-sandbox is not supported` — the bundled React Native DevTools is Electron-based and refuses to run as root. Always run as your normal user: `npx expo start --dev-client --tunnel`.
+- **WSL2 hides the LAN dev server from the phone.** Plain `npx expo start` advertises a `172.x` WSL-internal address the phone can't reach. Two fixes:
+  - (a) use `--tunnel` (routes via Expo's servers), or
+  - (b) on Windows 11, enable mirrored networking: put `[wsl2]` / `networkingMode=mirrored` in `C:\Users\<name>\.wslconfig`, run `wsl --shutdown`, and then plain `npx expo start --dev-client` works over the LAN.
+- **The `@expo/ngrok` tunnel can fail transiently** (e.g. `TypeError: Cannot read properties of undefined (reading 'body')`, or an ngrok outage). Just retry the command a couple of times.
+- **If a prior `sudo` run left root-owned files** and the normal run then hits permission/EACCES errors, fix ownership once: `sudo chown -R $(whoami) .expo node_modules ~/.npm`.
 
 Known gaps (deliberate, note before shipping):
 - No custom **notification icon** — the `expo-notifications` plugin is registered without options; Android will use a default. To fix later: add a 96×96 all-white transparent PNG under `assets/` and set it via the plugin options (`[ "expo-notifications", { "icon": "./assets/notification-icon.png", "color": "#..." } ]`).
