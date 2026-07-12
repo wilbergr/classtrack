@@ -3,7 +3,7 @@
 // call), the day card is a glance (never a list), and capture/Progress are
 // one tap. With companion "None" this renders the calm orb home instead.
 
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -24,13 +24,19 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import Companion, { EnergyOrb } from '../components/Companion';
+import Companion, { EnergyMeter, EnergyOrb } from '../components/Companion';
+import EvolutionMoment from '../components/EvolutionMoment';
 import QuickAddSheet from '../components/QuickAddSheet';
 import SparkPill from '../components/SparkPill';
 import SpeechBubble from '../components/SpeechBubble';
 import { listOpenAssignmentsWithSubject, listSubjects } from '../db/database';
 import { startOfDay } from '../dates';
-import { deriveMood, stageForLevel } from '../gamification/companion';
+import {
+  deriveMood,
+  stageForLevel,
+  STAGE_NAMES,
+  type CompanionStage,
+} from '../gamification/companion';
 import {
   getProgressSummaryAsync,
   getWeekSummaryAsync,
@@ -57,6 +63,12 @@ import type { AssignmentWithSubject, VoicePackId } from '../types';
 
 /** Settings key: startOfDay of the last Home greeting (one greeting per day). */
 const LAST_GREET_KEY = 'lastHomeGreetDay';
+/**
+ * Settings key: the highest stage already celebrated with an evolution
+ * moment. 0 = never set; it is then initialized silently to the current
+ * stage so an update never replays history.
+ */
+const LAST_STAGE_KEY = 'lastSeenStage';
 /** Queue lines rotate slowly; reaction lines clear back to the queue sooner. */
 const ROTATE_MS = 12000;
 const REACTION_MS = 6000;
@@ -81,7 +93,13 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
   const [quickAddVisible, setQuickAddVisible] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
+  const [pendingEvolution, setPendingEvolution] = useState<{
+    from: CompanionStage;
+    to: CompanionStage;
+  } | null>(null);
+  const [evolutionVisible, setEvolutionVisible] = useState(false);
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFocused = useIsFocused();
 
   const species = settings.companion === 'none' ? null : settings.companion;
   const isNone = species === null;
@@ -118,6 +136,17 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
     setProgress(p);
     setHasSubjects(subjects.length > 0);
 
+    // Evolution detection: lifetime Sparks crossed a stage threshold since
+    // the last celebrated stage (robust to awards earned on other screens).
+    const stage = stageForLevel(p.level);
+    const lastSeen = await getSettingAsync<number>(LAST_STAGE_KEY, 0);
+    if (lastSeen === 0 || species === null) {
+      // First run (or no mascot): initialize silently, never replay history.
+      if (stage !== lastSeen) await setSettingAsync(LAST_STAGE_KEY, stage);
+    } else if (stage > lastSeen) {
+      setPendingEvolution({ from: lastSeen as CompanionStage, to: stage });
+    }
+
     const today = startOfDay(now);
     const firstOpenToday = lastGreet < today;
     if (firstOpenToday) await setSettingAsync(LAST_GREET_KEY, today);
@@ -148,7 +177,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
       ),
     );
     setBubbleIdx(0);
-  }, [name, packId, woken]);
+  }, [name, packId, woken, species]);
 
   useFocusEffect(
     useCallback(() => {
@@ -188,6 +217,30 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
     }
     return undefined;
   }, [liveLine, bubbleIdx, utterances]);
+
+  // Play a pending evolution once Home is actually on stage (not mid-capture).
+  useEffect(() => {
+    if (pendingEvolution && isFocused && !quickAddVisible && species !== null) {
+      setEvolutionVisible(true);
+    }
+  }, [pendingEvolution, isFocused, quickAddVisible, species]);
+
+  const closeEvolution = useCallback(async () => {
+    setEvolutionVisible(false);
+    const evolved = pendingEvolution;
+    setPendingEvolution(null);
+    if (evolved) {
+      await setSettingAsync(LAST_STAGE_KEY, evolved.to);
+      const recent = await getRecentBubblesAsync();
+      const u = composeReaction(
+        'evolve',
+        { packId, companionName: name, now: Date.now() },
+        progress?.level ?? 1,
+        recent,
+      );
+      if (u) setLiveLine(u);
+    }
+  }, [pendingEvolution, packId, name, progress]);
 
   const current = liveLine ?? utterances[bubbleIdx] ?? null;
 
@@ -323,7 +376,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
               style={styles.nameChip}
             >
               <Text style={styles.nameText}>
-                {name} · Lv {lp?.level ?? 1}
+                {name} · {STAGE_NAMES[stageForLevel(lp?.level ?? 1)]}
               </Text>
             </Pressable>
           ))}
@@ -337,17 +390,23 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
           accessibilityRole="button"
           accessibilityLabel={`${dayLabel}. Opens Today.`}
         >
-          <View style={styles.dayDots}>
-            {counts.dueToday > 0 && <View style={[styles.dot, { backgroundColor: colors.ramp.today }]} />}
-            {counts.dueTomorrow > 0 && (
-              <View style={[styles.dot, { backgroundColor: colors.ramp.tomorrow }]} />
-            )}
-            {counts.dueToday === 0 && counts.dueTomorrow === 0 && (
-              <View style={[styles.dot, { backgroundColor: colors.done }]} />
-            )}
+          <View style={styles.dayCardRow}>
+            <View style={styles.dayDots}>
+              {counts.dueToday > 0 && (
+                <View style={[styles.dot, { backgroundColor: colors.ramp.today }]} />
+              )}
+              {counts.dueTomorrow > 0 && (
+                <View style={[styles.dot, { backgroundColor: colors.ramp.tomorrow }]} />
+              )}
+              {counts.dueToday === 0 && counts.dueTomorrow === 0 && (
+                <View style={[styles.dot, { backgroundColor: colors.done }]} />
+              )}
+            </View>
+            <Text style={styles.dayText}>{dayLabel}</Text>
+            <Text style={styles.dayChevron}>›</Text>
           </View>
-          <Text style={styles.dayText}>{dayLabel}</Text>
-          <Text style={styles.dayChevron}>›</Text>
+          {/* Soft glance at the next form — never a countdown. */}
+          {lp && <EnergyMeter fraction={lp.fraction} width={180} height={4} />}
         </Pressable>
 
         <View style={styles.actionRow}>
@@ -381,6 +440,17 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
           navigation.navigate('AssignmentEdit', { draft });
         }}
       />
+      {species !== null && pendingEvolution && (
+        <EvolutionMoment
+          visible={evolutionVisible}
+          species={species}
+          accessories={settings.accessories}
+          name={name}
+          fromStage={pendingEvolution.from}
+          toStage={pendingEvolution.to}
+          onClose={closeEvolution}
+        />
+      )}
     </View>
   );
 }
@@ -493,7 +563,6 @@ const makeStyles = (colors: ThemeColors) =>
       textAlign: 'center',
     },
     dayCard: {
-      flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.sm,
       marginTop: spacing.xl,
@@ -505,6 +574,7 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: spacing.lg,
       minHeight: 48,
     },
+    dayCardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
     dayDots: { flexDirection: 'row', gap: 4 },
     dot: { width: 8, height: 8, borderRadius: 4 },
     dayText: { color: colors.text, fontSize: 15, fontWeight: '600' },

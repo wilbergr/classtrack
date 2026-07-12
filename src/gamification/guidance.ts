@@ -169,7 +169,7 @@ export function composeCelebration(
  * comeback-flavored wake-up when a dozing companion is tapped.
  */
 export function composeReaction(
-  slot: 'idlePoke' | 'comeback',
+  slot: 'idlePoke' | 'comeback' | 'evolve',
   inputs: Pick<GuidanceInputs, 'packId' | 'companionName' | 'now'>,
   level: number,
   recent: string[],

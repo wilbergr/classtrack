@@ -23,7 +23,7 @@ import Svg, { Circle, Rect } from 'react-native-svg';
 
 import SvgRigLayer from './companion/SvgRigLayer';
 import { buildRig, type RigLayer, type RigModel } from './companion/model';
-import type { CompanionMood } from '../gamification/companion';
+import type { CompanionMood, CompanionStage } from '../gamification/companion';
 import { useCalmMotion } from '../hooks';
 import { useTheme } from '../theme';
 import type { CompanionId } from '../types';
@@ -33,7 +33,7 @@ export type CompanionSpecies = Exclude<CompanionId, 'none'>;
 interface Props {
   species: CompanionSpecies;
   mood: CompanionMood;
-  stage: 1 | 2 | 3;
+  stage: CompanionStage;
   size: number;
   /** Equipped accessory item keys (shop unlocks): scarf / halo / bowtie. */
   accessories?: string[];
@@ -129,6 +129,18 @@ export default function Companion({ species, mood, stage, size, accessories = []
     };
   }, [calm, mood, lookX, lookY]);
 
+  // Luminous companions do a tiny celebratory bounce every ~30 s.
+  useEffect(() => {
+    if (calm || stage < 5 || mood === 'dozing') return;
+    const interval = setInterval(() => {
+      hop.value = withSequence(
+        withSpring(-size * 0.035, { damping: 9, stiffness: 300 }),
+        withSpring(0, { damping: 12 }),
+      );
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [calm, stage, mood, hop, size]);
+
   // Little double-hop when celebrating.
   const prevMood = useRef(mood);
   useEffect(() => {
@@ -179,7 +191,75 @@ export default function Companion({ species, mood, stage, size, accessories = []
           calm={calm}
         />
       )}
+      {model.motes && !calm && <AmbientMotes tint={colors.companion[species]} size={size} />}
     </Animated.View>
+  );
+}
+
+// ---------- ambient motes (stages 4–5) ----------
+
+interface MoteSpec {
+  left: number; // fraction of size
+  top: number;
+  r: number;
+  durationMs: number;
+  delayMs: number;
+}
+
+const MOTE_SPECS: MoteSpec[] = [
+  { left: 0.12, top: 0.62, r: 2.5, durationMs: 3800, delayMs: 0 },
+  { left: 0.85, top: 0.55, r: 2, durationMs: 4400, delayMs: 900 },
+  { left: 0.2, top: 0.3, r: 1.8, durationMs: 5000, delayMs: 1800 },
+  { left: 0.78, top: 0.22, r: 2.2, durationMs: 4200, delayMs: 600 },
+  { left: 0.5, top: 0.08, r: 1.6, durationMs: 4800, delayMs: 1400 },
+];
+
+/** Drifting tint dots: rise, fade, repeat. Skipped entirely in calm motion. */
+function AmbientMotes({ tint, size }: { tint: string; size: number }) {
+  return (
+    <>
+      {MOTE_SPECS.map((m, i) => (
+        <Mote key={i} spec={m} tint={tint} size={size} />
+      ))}
+    </>
+  );
+}
+
+function Mote({ spec, tint, size }: { spec: MoteSpec; tint: string; size: number }) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = 0;
+    t.value = withRepeat(
+      withTiming(1, { duration: spec.durationMs, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(t);
+  }, [t, spec.durationMs]);
+  const style = useAnimatedStyle(() => {
+    const phase = (t.value + spec.delayMs / spec.durationMs) % 1;
+    return {
+      opacity: phase < 0.5 ? phase * 1.4 : (1 - phase) * 1.4,
+      transform: [{ translateY: -phase * size * 0.12 }],
+    };
+  });
+  const d = spec.r * 2 * (size / 100);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          left: spec.left * size,
+          top: spec.top * size,
+          width: d,
+          height: d,
+          borderRadius: d / 2,
+          backgroundColor: tint,
+        },
+        style,
+      ]}
+    />
   );
 }
 

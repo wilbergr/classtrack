@@ -296,6 +296,7 @@ export type BubbleSlot =
   | 'comeback'
   | 'celebrate'
   | 'levelUp'
+  | 'evolve'
   | 'windDown'
   | 'weekend'
   | 'idlePoke'
@@ -358,6 +359,10 @@ const emberBubbles: BubbleSet = {
   levelUp: [
     (c) => `LEVEL ${c.level}!! I feel taller. Do I look taller? ✦`,
     (c) => `LEVEL ${c.level}!! You did this. I'm just glowing about it. ✦`,
+  ],
+  evolve: [
+    () => 'WHOA. New form unlocked. You did this. ✦',
+    () => 'EVOLUTION!! Look at me. Look at US. ✦',
   ],
   windDown: [
     (c) =>
@@ -424,6 +429,10 @@ const sageBubbles: BubbleSet = {
     (c) => `Level ${c.level}. Growth suits you.`,
     (c) => `Level ${c.level} — steady work, adding up.`,
   ],
+  evolve: [
+    () => 'A new form. Grown from steady work — thank you.',
+    () => "I've grown. Your Sparks did this, you know.",
+  ],
   windDown: [
     (c) => `Tomorrow holds ${things(c.dueTomorrow)}. Tonight can be gentle about it.`,
     (c) => `An evening note: ${things(c.dueTomorrow)} tomorrow. Rest is preparation too.`,
@@ -486,6 +495,10 @@ const dotBubbles: BubbleSet = {
     (c) => `Level ${c.level}. I have evolved. You did the work. Team effort.`,
     (c) => `Level ${c.level} acquired. Adjusting altitude. Beep.`,
   ],
+  evolve: [
+    () => 'Evolution complete. New body, same beep.',
+    () => 'I have upgraded. The work was yours; the glow-up is mine.',
+  ],
   windDown: [
     (c) => `Tomorrow: ${things(c.dueTomorrow)}. Tonight: optional heroics.`,
     (c) => `Forecast for tomorrow: ${things(c.dueTomorrow)}. This concludes the bulletin.`,
@@ -527,6 +540,7 @@ const plainBubbles: BubbleSet = {
   comeback: [() => 'Welcome back.'],
   celebrate: [(c) => `+${c.earned} sparks.`],
   levelUp: [(c) => `Level ${c.level}.`],
+  evolve: [(c) => `Level ${c.level}.`],
   windDown: [(c) => `${c.dueTomorrow} due tomorrow.`],
   weekend: [],
   idlePoke: [() => 'Hi.'],

@@ -8,12 +8,28 @@ import type { Progress } from '../types';
 
 export type CompanionMood = 'bright' | 'alert' | 'dozing' | 'celebrating';
 
-/** 3 stages: small → grown → radiant. Purely additive detail. */
-export function stageForLevel(level: number): 1 | 2 | 3 {
-  if (level >= 12) return 3;
-  if (level >= 5) return 2;
+export type CompanionStage = 1 | 2 | 3 | 4 | 5;
+
+/**
+ * 5 stages on the existing lifetime-Spark level curve. Purely additive
+ * detail; driven by `lifetime`, so a form can never be bought or lost.
+ * Existing users only ever map upward (old stage 3 = level ≥12 → stage 4).
+ */
+export function stageForLevel(level: number): CompanionStage {
+  if (level >= 14) return 5;
+  if (level >= 9) return 4;
+  if (level >= 5) return 3;
+  if (level >= 3) return 2;
   return 1;
 }
+
+export const STAGE_NAMES: Record<CompanionStage, string> = {
+  1: 'Hatchling',
+  2: 'Sprout',
+  3: 'Grown',
+  4: 'Radiant',
+  5: 'Luminous',
+};
 
 export interface MoodInputs {
   progress: Pick<Progress, 'momentum' | 'lastActiveDay'>;

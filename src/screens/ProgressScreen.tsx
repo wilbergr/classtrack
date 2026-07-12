@@ -7,10 +7,12 @@
 
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import EvolutionMoment from '../components/EvolutionMoment';
 import SparkShop from '../components/SparkShop';
+import { stageForLevel, STAGE_NAMES, type CompanionStage } from '../gamification/companion';
 import {
   getProgressSummaryAsync,
   getWeekSummaryAsync,
@@ -21,6 +23,7 @@ import {
 } from '../gamification/engine';
 import { onProgressChanged } from '../gamification/events';
 import { levelProgress } from '../gamification/levels';
+import { useSettings } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 
@@ -34,6 +37,8 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [week, setWeek] = useState<WeekSummary | null>(null);
+  const [showEvolution, setShowEvolution] = useState(false);
+  const settings = useSettings();
 
   const load = useCallback(async () => {
     await settleMomentumAsync();
@@ -53,6 +58,8 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
 
   const lp = levelProgress(progress.lifetime);
   const toNext = lp.span - lp.into;
+  const stage = stageForLevel(lp.level);
+  const species = settings.companion === 'none' ? null : settings.companion;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -95,6 +102,29 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
           {toNext} more to level {lp.level + 1} · {progress.lifetime} earned all-time
         </Text>
       </View>
+
+      {species !== null && stage >= 2 && (
+        <Pressable
+          onPress={() => setShowEvolution(true)}
+          style={({ pressed }) => [styles.evolutionRow, pressed && { opacity: 0.85 }]}
+          accessibilityRole="button"
+          accessibilityLabel={`See evolution. Current form: ${STAGE_NAMES[stage]}.`}
+        >
+          <Text style={styles.evolutionText}>✦ See evolution</Text>
+          <Text style={styles.evolutionStage}>{STAGE_NAMES[stage]}</Text>
+        </Pressable>
+      )}
+      {species !== null && stage >= 2 && (
+        <EvolutionMoment
+          visible={showEvolution}
+          species={species}
+          accessories={settings.accessories}
+          name={settings.companionName}
+          fromStage={(stage - 1) as CompanionStage}
+          toStage={stage}
+          onClose={() => setShowEvolution(false)}
+        />
+      )}
 
       <Text style={styles.sectionTitle}>Momentum</Text>
       <View style={styles.card}>
@@ -169,6 +199,21 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xl,
   },
+  evolutionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    minHeight: 48,
+  },
+  evolutionText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  evolutionStage: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
   ringWrap: { width: RING_SIZE, height: RING_SIZE },
   ringCenter: {
     position: 'absolute',
