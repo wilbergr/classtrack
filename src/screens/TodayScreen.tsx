@@ -4,6 +4,7 @@ import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-nat
 
 import AssignmentRow from '../components/AssignmentRow';
 import EmptyState from '../components/EmptyState';
+import QuickAddSheet from '../components/QuickAddSheet';
 import SparkPill from '../components/SparkPill';
 import { listOpenAssignmentsWithSubject, listSubjects, setAssignmentCompleted } from '../db/database';
 import { dueStatus } from '../dates';
@@ -93,16 +94,26 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
     [load, calm],
   );
 
-  const addAssignment = useCallback(() => {
-    if (!hasSubjects) {
-      Alert.alert('No subjects yet', 'Create a subject first, then add assignments to it.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Go to Subjects', onPress: () => navigation.navigate('Subjects') },
-      ]);
-      return;
-    }
-    navigation.navigate('AssignmentEdit', {});
+  const [quickAddVisible, setQuickAddVisible] = useState(false);
+
+  const guardSubjects = useCallback(() => {
+    if (hasSubjects) return true;
+    Alert.alert('No subjects yet', 'Create a subject first, then add assignments to it.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Go to Subjects', onPress: () => navigation.navigate('Subjects') },
+    ]);
+    return false;
   }, [hasSubjects, navigation]);
+
+  /** FAB tap: the friction-free Quick Add sheet. */
+  const addAssignment = useCallback(() => {
+    if (guardSubjects()) setQuickAddVisible(true);
+  }, [guardSubjects]);
+
+  /** FAB long-press: straight to the full editor. */
+  const addWithDetails = useCallback(() => {
+    if (guardSubjects()) navigation.navigate('AssignmentEdit', {});
+  }, [guardSubjects, navigation]);
 
   return (
     <View style={styles.container}>
@@ -144,12 +155,23 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
       />
       <Pressable
         onPress={addAssignment}
+        onLongPress={addWithDetails}
         style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
         accessibilityRole="button"
         accessibilityLabel="Add assignment"
+        accessibilityHint="Long press for the full editor"
       >
         <Text style={styles.fabText}>＋</Text>
       </Pressable>
+      <QuickAddSheet
+        visible={quickAddVisible}
+        onClose={() => setQuickAddVisible(false)}
+        onAdded={load}
+        onAllDetails={(draft) => {
+          setQuickAddVisible(false);
+          navigation.navigate('AssignmentEdit', { draft });
+        }}
+      />
     </View>
   );
 }

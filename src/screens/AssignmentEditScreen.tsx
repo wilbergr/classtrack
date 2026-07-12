@@ -43,13 +43,16 @@ export default function AssignmentEditScreen({
 }: RootStackScreenProps<'AssignmentEdit'>) {
   const assignmentId = route.params?.assignmentId;
   const presetSubjectId = route.params?.subjectId;
+  const draft = route.params?.draft;
   const isEditing = assignmentId != null;
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [title, setTitle] = useState('');
-  const [subjectId, setSubjectId] = useState<number | null>(presetSubjectId ?? null);
-  const [type, setType] = useState<AssignmentType>('homework');
-  const [due, setDue] = useState<Date>(defaultDue);
+  const [title, setTitle] = useState(draft?.title ?? '');
+  const [subjectId, setSubjectId] = useState<number | null>(
+    draft?.subjectId ?? presetSubjectId ?? null,
+  );
+  const [type, setType] = useState<AssignmentType>(draft?.type ?? 'homework');
+  const [due, setDue] = useState<Date>(() => (draft ? new Date(draft.dueAt) : defaultDue()));
   const [notes, setNotes] = useState('');
   const [notificationIds, setNotificationIds] = useState<string[]>([]);
   const [completed, setCompleted] = useState(false);
@@ -87,12 +90,12 @@ export default function AssignmentEditScreen({
           setNotificationIds(a.notificationIds);
           setCompleted(a.completed);
         }
-      } else if (presetSubjectId == null && subs.length > 0) {
+      } else if (presetSubjectId == null && draft?.subjectId == null && subs.length > 0) {
         setSubjectId(subs[0].id);
       }
       setReady(true);
     })();
-  }, [assignmentId, isEditing, presetSubjectId]);
+  }, [assignmentId, isEditing, presetSubjectId, draft]);
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Edit assignment' : 'New assignment' });

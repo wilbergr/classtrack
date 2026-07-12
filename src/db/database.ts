@@ -312,6 +312,15 @@ export async function setAssignmentNotificationIds(id: number, ids: string[]): P
   await db.runAsync('UPDATE assignments SET notification_ids = ? WHERE id = ?', JSON.stringify(ids), id);
 }
 
+/** All (subjectId, title) pairs — feeds Quick Add's local subject-inference heuristic. */
+export async function listAssignmentTitles(): Promise<{ subjectId: number; title: string }[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<{ subject_id: number; title: string }>(
+    'SELECT subject_id, title FROM assignments ORDER BY created_at DESC LIMIT 400',
+  );
+  return rows.map((r) => ({ subjectId: r.subject_id, title: r.title }));
+}
+
 /** Delete an assignment. Returns its notification ids so the caller can cancel them. */
 export async function deleteAssignment(id: number): Promise<string[]> {
   const db = await getDb();
