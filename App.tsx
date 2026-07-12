@@ -8,7 +8,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import SparkBurst from './src/components/SparkBurst';
 import { getDb } from './src/db/database';
 import type { RootStackParamList, TabParamList } from './src/navigation';
-import { initNotificationsAsync } from './src/notifications';
+import { initNotificationsAsync, refreshDailyDigestsAsync } from './src/notifications';
 import { getSettingAsync, loadSettingsAsync } from './src/settings';
 import { settleMomentumAsync } from './src/gamification/engine';
 import AssignmentEditScreen from './src/screens/AssignmentEditScreen';
@@ -74,6 +74,8 @@ export default function App() {
         setOnboarded(await getSettingAsync(ONBOARDED_KEY, false));
         await settleMomentumAsync(); // lazy momentum/grace evaluation on open
         await initNotificationsAsync();
+        // Roll the 7-day digest window forward; never blocks startup.
+        refreshDailyDigestsAsync().catch(() => undefined);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {

@@ -26,9 +26,23 @@
     "plugins": [
       "expo-sqlite",
       "expo-dev-client",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#3B6FF5"
+        }
+      ],
       "@react-native-community/datetimepicker",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#E6F4FE"
+        }
+      ]
     ],
     "extra": {
       "eas": {

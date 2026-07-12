@@ -314,6 +314,27 @@ export async function setAssignmentNotificationIds(id: number, ids: string[]): P
   await db.runAsync('UPDATE assignments SET notification_ids = ? WHERE id = ?', JSON.stringify(ids), id);
 }
 
+/** Open assignments due in [startTs, endTs) — digest + big-day counts. */
+export async function countOpenDueBetween(startTs: number, endTs: number): Promise<number> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM assignments WHERE completed = 0 AND due_at >= ? AND due_at < ?',
+    startTs,
+    endTs,
+  );
+  return row?.n ?? 0;
+}
+
+/** Open assignments already past due as of `ts`. */
+export async function countOpenOverdue(ts: number): Promise<number> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM assignments WHERE completed = 0 AND due_at < ?',
+    ts,
+  );
+  return row?.n ?? 0;
+}
+
 /** All (subjectId, title) pairs — feeds Quick Add's local subject-inference heuristic. */
 export async function listAssignmentTitles(): Promise<{ subjectId: number; title: string }[]> {
   const db = await getDb();
