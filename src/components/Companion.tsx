@@ -341,6 +341,43 @@ function Unit7({ mood, stage, eyesClosed, c }: ShellProps) {
   );
 }
 
+/**
+ * The "no mascots" Home centerpiece: the EnergyMeter grown into a calm
+ * level-fraction orb. Same slot as the companion, zero personality.
+ */
+export function EnergyOrb({ fraction, size }: { fraction: number; size: number }) {
+  const { colors } = useTheme();
+  const stroke = Math.max(8, size * 0.05);
+  const r = (size - stroke) / 2 - 2;
+  const c = 2 * Math.PI * r;
+  const clamped = Math.max(0.02, Math.min(1, fraction));
+  return (
+    <Svg width={size} height={size}>
+      <Circle cx={size / 2} cy={size / 2} r={r - stroke} fill={colors.spark} opacity={0.12} />
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        stroke={colors.border}
+        strokeWidth={stroke}
+        fill="none"
+      />
+      <Circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        stroke={colors.spark}
+        strokeWidth={stroke}
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={`${c}`}
+        strokeDashoffset={c * (1 - clamped)}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+    </Svg>
+  );
+}
+
 /** The "no mascots" path: same energy, rendered as a clean meter. */
 export function EnergyMeter({
   fraction,
