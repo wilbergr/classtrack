@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "classtrack",
+    "name": "ClassTrack",
     "slug": "classtrack",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,6 +10,8 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.wilbergr.classtrack",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -23,6 +25,8 @@
     },
     "plugins": [
       "expo-sqlite",
+      "expo-dev-client",
+      "expo-notifications",
       "@react-native-community/datetimepicker"
     ]
   }

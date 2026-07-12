@@ -24,6 +24,15 @@ Invariant: each assignment row persists its scheduled notification ids (`notific
 JSON column). Any mutation must go through `refreshAssignmentRemindersAsync()` (cancels stale
 ids, reschedules, persists new ids); deletes return the ids so callers can cancel them.
 
+# EAS builds (config only — owner runs the builds)
+
+- `eas.json`: `development` (dev client, internal, APK), `preview` (internal APK), `production`
+  (store defaults, AAB). `appVersionSource: "local"` → bump `android.versionCode` in `app.json`
+  manually. Android package: `com.wilbergr.classtrack`.
+- `extra.eas.projectId` is intentionally absent — it is account-bound and gets written by the
+  owner's first `eas build`. Never add it, and never run `eas login`/`eas init`/`eas build`
+  from an agent session. Runbook: see "Android dev build" in `HANDOFF.md`.
+
 # Verification
 
 - `npx tsc --noEmit` must pass clean (strict mode).
