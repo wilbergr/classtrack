@@ -35,3 +35,10 @@ export function mix(a: string, b: string, t: number): string {
   const [br, bg, bb] = parseHex(b);
   return toHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
 }
+
+/** `#RRGGBBAA` from a hex color + 0..1 alpha (for Skia gradient stops). */
+export function withAlpha(hex: string, alpha: number): string {
+  const [r, g, b] = parseHex(hex);
+  const a = clamp255(alpha * 255).toString(16).padStart(2, '0');
+  return `${toHex(r, g, b)}${a}`;
+}

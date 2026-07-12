@@ -1,13 +1,13 @@
-// The companion, Rig v2: a parametric layered model (companion/model.ts)
-// drawn by a swappable draw layer (SvgRigLayer) and animated exclusively via
-// Reanimated transforms on wrapper Animated.Views — squash-and-stretch
-// breathing with per-layer phase lag, wandering eye-tracking pupils,
-// asymmetric blinks, pulsing aura, celebrate hop. SVG props only ever change
-// at low frequency (blink/mood/stage) via React state — the New-Architecture
-// safe pattern. All motion is gated by useCalmMotion().
+// The companion, Rig v2 on Skia: a parametric layered model
+// (companion/model.ts) drawn by SkiaRig — one Canvas, per-layer Groups whose
+// transforms are driven directly by Reanimated shared values (Skia's
+// first-class integration), with real BlurMask glow on aura/shimmer layers.
+// Squash-and-stretch breathing with per-layer phase lag, wandering
+// eye-tracking pupils, asymmetric blinks, celebrate hop, species-flavored
+// poke reactions. Model rebuilds (blink/mood/stage) stay low-frequency React
+// state. All motion is gated by useCalmMotion().
 
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -17,12 +17,11 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Circle, Rect } from 'react-native-svg';
 
-import SvgRigLayer from './companion/SvgRigLayer';
-import { buildRig, type RigLayer, type RigModel } from './companion/model';
+import SkiaRig from './companion/SkiaRig';
+import { buildRig, type RigModel } from './companion/model';
 import type { CompanionMood, CompanionStage } from '../gamification/companion';
 import { useCalmMotion } from '../hooks';
 import { useTheme } from '../theme';
@@ -227,26 +226,15 @@ export default function Companion({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {model.layers.map((layer) => (
-        <RigLayerView
-          key={layer.id}
-          layer={layer}
-          size={size}
-          breath={breath}
-          pulse={pulse}
-          calm={calm}
-        />
-      ))}
-      {model.pupils && (
-        <PupilLayer
-          pupils={model.pupils}
-          size={size}
-          lookX={lookX}
-          lookY={lookY}
-          breath={breath}
-          calm={calm}
-        />
-      )}
+      <SkiaRig
+        model={model}
+        size={size}
+        breath={breath}
+        pulse={pulse}
+        lookX={lookX}
+        lookY={lookY}
+        calm={calm}
+      />
       {model.motes && !calm && <AmbientMotes tint={colors.companion[species]} size={size} />}
     </Animated.View>
   );
@@ -316,87 +304,6 @@ function Mote({ spec, tint, size }: { spec: MoteSpec; tint: string; size: number
         style,
       ]}
     />
-  );
-}
-
-/** One rig layer: static SVG inside an independently-animated wrapper. */
-function RigLayerView({
-  layer,
-  size,
-  breath,
-  pulse,
-  calm,
-}: {
-  layer: RigLayer;
-  size: number;
-  breath: SharedValue<number>;
-  pulse: SharedValue<number>;
-  calm: boolean;
-}) {
-  const style = useAnimatedStyle(() => {
-    if (layer.pulse) {
-      const p = calm ? 0.5 : Math.sin(pulse.value * Math.PI * 2) * 0.5 + 0.5;
-      return {
-        opacity: 0.7 + 0.3 * p,
-        transform: [{ scale: 1 + 0.05 * p }],
-      };
-    }
-    const s = calm ? 0 : Math.sin((breath.value + layer.breathPhase) * Math.PI * 2) * layer.breathAmp;
-    const scaleX = 1 + s;
-    const scaleY = 1 - s * 0.85;
-    const sway = layer.sway ?? 0;
-    const rot = calm || sway === 0 ? 0 : Math.sin((breath.value + layer.breathPhase + 0.25) * Math.PI * 2) * sway;
-    return {
-      transform: [
-        // Anchor the squash near the feet so the ground contact holds.
-        { translateY: (1 - scaleY) * size * 0.42 },
-        { scaleX },
-        { scaleY },
-        { rotate: `${rot}deg` },
-      ],
-    };
-  });
-  return (
-    <Animated.View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
-      <SvgRigLayer shapes={layer.shapes} size={size} idPrefix={layer.id} />
-    </Animated.View>
-  );
-}
-
-/** The wandering eyes, riding the same breath as the face layer. */
-function PupilLayer({
-  pupils,
-  size,
-  lookX,
-  lookY,
-  breath,
-  calm,
-}: {
-  pupils: NonNullable<RigModel['pupils']>;
-  size: number;
-  lookX: SharedValue<number>;
-  lookY: SharedValue<number>;
-  breath: SharedValue<number>;
-  calm: boolean;
-}) {
-  const style = useAnimatedStyle(() => {
-    const s = calm ? 0 : Math.sin((breath.value + 0.22) * Math.PI * 2) * 0.015;
-    const scaleY = 1 - s * 0.85;
-    const px = calm ? 0 : lookX.value * pupils.range * (size / 100);
-    const py = calm ? 0 : lookY.value * pupils.range * (size / 100);
-    return {
-      transform: [
-        { translateY: (1 - scaleY) * size * 0.42 + py },
-        { translateX: px },
-        { scaleX: 1 + s },
-        { scaleY },
-      ],
-    };
-  });
-  return (
-    <Animated.View style={[StyleSheet.absoluteFill, style]} pointerEvents="none">
-      <SvgRigLayer shapes={pupils.shapes} size={size} idPrefix="pupils" />
-    </Animated.View>
   );
 }
 
