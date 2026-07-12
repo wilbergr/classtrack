@@ -75,8 +75,36 @@ One economy, one face: captures/completions earn **Sparks** (schema v2:
   keep it opt-in.
 - New native modules since Layer 1: `react-native-reanimated`,
   `expo-haptics`, `react-native-svg`, `expo-audio`, `expo-splash-screen`,
-  `expo-speech-recognition` → owner must run a FRESH `eas build` dev client
-  (a JS reload of the old dev client will crash on missing native modules).
+  `expo-speech-recognition`, `@shopify/react-native-skia` → owner must run a
+  FRESH `eas build` dev client (a JS reload of the old dev client will crash
+  on missing native modules).
+
+# Companion Home (Layer 2)
+
+The companion is the app's face: `Home` is the first tab and the initial
+route (`launchScreen` setting opts down to Today-first).
+
+- `src/screens/HomeScreen.tsx` — bubble queue + big companion + glance day
+  card + quick add/Progress actions. Companion `none` renders the `EnergyOrb`
+  home with Plain-pack info-card bubbles; same layout, no dead end.
+- `src/gamification/guidance.ts` — speech bubbles are deterministic
+  templates over on-device day data (NO network/LLM, ever). Slots live in
+  `BUBBLES` in `copy.ts` (all four packs; apply the copy rulebook to every
+  new line). Selection reuses `pickTemplate` with a bubbles-own recent-ring
+  (`recentBubbleTemplates`); the ring records lines when actually shown.
+- **Rig v2 is model + renderer:** `src/components/companion/model.ts` is a
+  pure parametric model (species/stage/mood/theme → layers of primitive
+  shapes); `SkiaRig.tsx` draws it (one Canvas; per-layer `Group` transforms
+  driven by Reanimated shared values; real `BlurMask` glow on aura/shimmer).
+  Never animate react-native-svg props per-frame (New-Arch potholes) — SVG
+  remains only for static art (EnergyMeter/Orb, Progress ring, bubble tail).
+- Evolution: 5 stages from `stageForLevel` (levels 1/3/5/9/14), driven by
+  `progress.lifetime` so forms can never be bought or lost; stages only ever
+  map upward. The evolution moment is detected via the `lastSeenStage`
+  settings key on Home load (works no matter where the award happened) and
+  is replayable from Progress. Poking is affection only — no economy hooks.
+- Theme rule extension: `dayPhase` tokens (morning/evening ambient tints)
+  exist in EVERY palette; add them to any new palette.
 
 # EAS builds (config only — owner runs the builds)
 

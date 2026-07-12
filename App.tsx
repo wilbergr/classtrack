@@ -11,19 +11,21 @@ import { settleMomentumAsync } from './src/gamification/engine';
 import type { RootStackParamList, TabParamList } from './src/navigation';
 import { initNotificationsAsync, refreshDailyDigestsAsync } from './src/notifications';
 import AssignmentEditScreen from './src/screens/AssignmentEditScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import OnboardingScreen, { ONBOARDED_KEY } from './src/screens/OnboardingScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SubjectDetailScreen from './src/screens/SubjectDetailScreen';
 import SubjectsScreen from './src/screens/SubjectsScreen';
 import TodayScreen from './src/screens/TodayScreen';
-import { getSettingAsync, loadSettingsAsync } from './src/settings';
+import { getCachedSettings, getSettingAsync, loadSettingsAsync } from './src/settings';
 import { ThemeProvider, useTheme, type ThemeColors } from './src/theme';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const TAB_ICONS: Record<keyof TabParamList, string> = {
+  Home: '🏠',
   Today: '📅',
   Subjects: '📚',
   Settings: '⚙️',
@@ -35,14 +37,21 @@ function TabIcon({ name, focused }: { name: keyof TabParamList; focused: boolean
 
 function Tabs() {
   const { colors } = useTheme();
+  // Settings are loaded before navigation mounts; initialRouteName only
+  // matters at mount, so a one-time read is correct here.
+  const [initialRoute] = useState<keyof TabParamList>(() =>
+    getCachedSettings().launchScreen === 'today' ? 'Today' : 'Home',
+  );
   return (
     <Tab.Navigator
+      initialRouteName={initialRoute}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
       })}
     >
+      <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Today" component={TodayScreen} />
       <Tab.Screen name="Subjects" component={SubjectsScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />

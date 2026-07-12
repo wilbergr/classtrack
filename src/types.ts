@@ -55,6 +55,8 @@ export interface Progress {
   bestMomentum: number;
   grace: number; // grace tokens in hand (cap 2, refill weekly)
   lastActiveDay: number | null; // startOfDay epoch ms of last Spark-earning action
+  /** Armed after a gap: the next active day is a celebrated comeback. */
+  comeback: boolean;
 }
 
 export type SparkKind = 'capture' | 'complete' | 'on_time' | 'day_bonus' | 'spend';
@@ -80,6 +82,8 @@ export interface AppSettings {
   darkMode: 'system' | 'on' | 'off';
   companion: CompanionId;
   companionName: string;
+  /** Which tab the app opens on. Home (the companion) is the default; Today is the list-first opt-down. */
+  launchScreen: 'home' | 'today';
   voicePack: VoicePackId;
   soundOn: boolean;
   hapticsOn: boolean;

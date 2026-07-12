@@ -15,6 +15,7 @@ export interface AssignmentDraft {
 }
 
 export type TabParamList = {
+  Home: undefined;
   Today: undefined;
   Subjects: undefined;
   Settings: undefined;

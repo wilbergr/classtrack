@@ -46,6 +46,11 @@ const DARK_OPTIONS: { id: 'system' | 'on' | 'off'; label: string }[] = [
   { id: 'off', label: 'Light' },
 ];
 
+const LAUNCH_OPTIONS: { id: 'home' | 'today'; label: string }[] = [
+  { id: 'home', label: 'Home' },
+  { id: 'today', label: 'Today' },
+];
+
 const COMPANION_OPTIONS: { id: CompanionId; label: string }[] = [
   { id: 'wisp', label: 'Wisp' },
   { id: 'pip', label: 'Pip' },
@@ -245,6 +250,32 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
             />
           </>
         )}
+      </View>
+
+      <Text style={styles.sectionTitle}>Opening screen</Text>
+      <View style={styles.card}>
+        <View style={styles.chipWrap}>
+          {LAUNCH_OPTIONS.map((o) => {
+            const selected = settings.launchScreen === o.id;
+            return (
+              <Pressable
+                key={o.id}
+                onPress={() => updateSettingsAsync({ launchScreen: o.id })}
+                style={[styles.chip, selected && styles.chipSelected]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                  {o.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.hint}>
+          Which screen the app opens on. Home is your sidekick's spot; Today jumps straight to
+          the list.
+        </Text>
       </View>
 
       <Text style={styles.sectionTitle}>Capture</Text>

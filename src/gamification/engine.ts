@@ -44,6 +44,7 @@ function toProgress(r: ProgressRow): Progress {
     bestMomentum: r.best_momentum,
     grace: r.grace,
     lastActiveDay: r.last_active_day,
+    comeback: r.comeback === 1,
   };
 }
 

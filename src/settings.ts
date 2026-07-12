@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   darkMode: 'system',
   companion: 'wisp',
   companionName: 'Wisp',
+  launchScreen: 'home',
   voicePack: 'ember',
   soundOn: true,
   hapticsOn: true,
