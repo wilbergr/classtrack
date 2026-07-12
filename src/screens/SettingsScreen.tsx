@@ -247,6 +247,23 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
         )}
       </View>
 
+      <Text style={styles.sectionTitle}>Capture</Text>
+      <View style={styles.card}>
+        <View style={styles.switchRow}>
+          <Text style={styles.rowLabel}>Voice capture</Text>
+          <Switch
+            value={settings.voiceCaptureOn}
+            onValueChange={(v) => void updateSettingsAsync({ voiceCaptureOn: v })}
+          />
+        </View>
+        <Text style={styles.hint}>
+          Adds a mic button to Quick Add that types what you say — it never adds anything by
+          itself. Heads-up: speech recognition is handled by your device's system engine, and on
+          some devices that engine sends audio to its vendor (Google or Apple) to transcribe.
+          ClassTrack itself never sends your data anywhere.
+        </Text>
+      </View>
+
       <Text style={styles.sectionTitle}>Reminders</Text>
       <View style={styles.card}>
         <View style={styles.row}>

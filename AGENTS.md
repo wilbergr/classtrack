@@ -31,6 +31,53 @@ under a native-stack header) and `undefined` on Android, where the window alread
 Neither platform auto-scrolls a bottom-of-form input into the shrunken viewport — scroll it
 into view explicitly on focus/`keyboardDidShow`.
 
+# Spark (gamification) — Layer 1.5
+
+One economy, one face: captures/completions earn **Sparks** (schema v2:
+`progress`, `ledger`, `settings`, `unlocks` tables + `assignments.completed_at`).
+
+- `src/gamification/engine.ts` is the ONLY writer of `progress`/`ledger`. The
+  ledger is append-only and idempotent (partial unique index on
+  `(kind, assignment_id)`), so complete → un-complete → complete never
+  re-awards; `progress` is a rebuildable rollup cache. Momentum settles lazily
+  (`settleMomentumAsync` on app open + before awards, idempotent per day via
+  `progress.last_settled_day`).
+- Engine emits typed events (`src/gamification/events.ts`); UI (SparkBurst
+  overlay, SparkPill, companion) subscribes. Screens only call engine award
+  functions — feedback (sound/haptic/toast) is centralized in `SparkBurst`.
+- `src/settings.ts`: typed JSON settings over the `settings` table with an
+  in-memory cache (`loadSettingsAsync()` at app start; `useSettings()` hook).
+  Playful defaults (Hype vibe, Pop theme, Wisp companion, sound on) — calm is
+  the opt-down, chosen in onboarding or Settings.
+- **Theming:** `src/theme/` — `useTheme()` + per-component
+  `makeStyles(colors)` via `useMemo`. There is deliberately NO static colors
+  export; never hardcode a color, always add tokens to every palette in
+  `src/theme/palettes.ts` (incl. urgency ramp + companion tints).
+- Motion: `useCalmMotion()` (OS reduced-motion OR Reduce-effects OR Chill
+  vibe) must gate every spring/particle. Urgency/status is never conveyed by
+  color, motion, or sound alone.
+- Sounds in `assets/sounds/*.wav` are locally SYNTHESIZED placeholders (tiny
+  PCM chimes, no license issues). Swappable later for Kenney.nl CC0 UI audio —
+  same filenames, no code change.
+- Notification copy lives in `src/gamification/copy.ts` (voice packs
+  ember/sage/dot/plain). Hash-pick + settings-persisted recent-ring; copy
+  re-rolls on every edit because reminders cancel+reschedule. Daily digest =
+  rolling 7 days at 4 PM on its own `daily-digest` channel, ids persisted in
+  settings, refreshed on app open.
+- **Copy rulebook (hard constraints, enforce in every change):** never any
+  diagnosis/clinical wording (it's a fun planner for every student); no shame
+  ("failed/broke/lost/still haven't"); nothing is ever taken away (levels
+  never drop, Sparks never revoked, companion never sickens — worst case
+  asleep); no timed/expiring rewards; overdue = "whenever you're ready",
+  digest-only, never pushed; all state on-device, no network calls.
+- Voice capture (`expo-speech-recognition`) is default-OFF with a disclosure
+  in Settings: the OS speech engine may route audio through Google/Apple —
+  keep it opt-in.
+- New native modules since Layer 1: `react-native-reanimated`,
+  `expo-haptics`, `react-native-svg`, `expo-audio`, `expo-splash-screen`,
+  `expo-speech-recognition` → owner must run a FRESH `eas build` dev client
+  (a JS reload of the old dev client will crash on missing native modules).
+
 # EAS builds (config only — owner runs the builds)
 
 - `eas.json`: `development` (dev client, internal, APK), `preview` (internal APK), `production`

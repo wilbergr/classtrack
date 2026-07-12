@@ -42,7 +42,8 @@
           "imageWidth": 200,
           "backgroundColor": "#E6F4FE"
         }
-      ]
+      ],
+      "expo-speech-recognition"
     ],
     "extra": {
       "eas": {

@@ -87,4 +87,10 @@ export interface AppSettings {
   celebrationStyle: CelebrationStyle;
   /** Equipped companion accessory item keys. */
   accessories: string[];
+  /**
+   * Mic-to-title on Quick Add. Default OFF: on some devices the OS speech
+   * engine routes audio through vendor servers — an OS behavior, not an app
+   * network call, disclosed next to the toggle.
+   */
+  voiceCaptureOn: boolean;
 }

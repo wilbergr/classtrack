@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reduceEffects: false,
   celebrationStyle: 'burst',
   accessories: [],
+  voiceCaptureOn: false,
 };
 
 const APP_KEY = 'app';

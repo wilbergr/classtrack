@@ -15,9 +15,11 @@ import {
   View,
 } from 'react-native';
 
+import VoiceCaptureButton from './VoiceCaptureButton';
 import { createAssignment, listAssignmentTitles, listSubjects } from '../db/database';
 import { playSound } from '../feedback';
 import { awardCaptureAsync } from '../gamification/engine';
+import { useSettings } from '../hooks';
 import { refreshAssignmentRemindersAsync } from '../notifications';
 import { getSettingAsync, setSettingAsync } from '../settings';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
@@ -60,6 +62,7 @@ interface Props {
 export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { voiceCaptureOn } = useSettings();
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState<number | null>(null);
@@ -179,19 +182,22 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
               )}
             </View>
 
-            <TextInput
-              ref={inputRef}
-              value={title}
-              onChangeText={onTitleChange}
-              placeholder="What's the work? e.g. Wksht p. 12"
-              placeholderTextColor={colors.textMuted}
-              style={styles.input}
-              autoFocus
-              maxLength={120}
-              returnKeyType="done"
-              onSubmitEditing={add}
-              submitBehavior="submit"
-            />
+            <View style={styles.inputRow}>
+              <TextInput
+                ref={inputRef}
+                value={title}
+                onChangeText={onTitleChange}
+                placeholder="What's the work? e.g. Wksht p. 12"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, styles.inputFlex]}
+                autoFocus
+                maxLength={120}
+                returnKeyType="done"
+                onSubmitEditing={add}
+                submitBehavior="submit"
+              />
+              {voiceCaptureOn && <VoiceCaptureButton onTranscript={onTitleChange} />}
+            </View>
 
             <ScrollView
               horizontal
@@ -340,6 +346,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   heading: { color: colors.text, fontSize: 17, fontWeight: '700' },
   addedNote: { color: colors.done, fontSize: 13, fontWeight: '600' },
+  inputRow: { flexDirection: 'row', alignItems: 'center' },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -350,6 +357,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.card,
   },
+  inputFlex: { flex: 1 },
   chipRow: { gap: spacing.sm, paddingVertical: spacing.md },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   chip: {
