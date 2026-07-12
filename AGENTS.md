@@ -29,9 +29,12 @@ ids, reschedules, persists new ids); deletes return the ids so callers can cance
 - `eas.json`: `development` (dev client, internal, APK), `preview` (internal APK), `production`
   (store defaults, AAB). `appVersionSource: "local"` → bump `android.versionCode` in `app.json`
   manually. Android package: `com.wilbergr.classtrack`.
-- `extra.eas.projectId` is intentionally absent — it is account-bound and gets written by the
-  owner's first `eas build`. Never add it, and never run `eas login`/`eas init`/`eas build`
-  from an agent session. Runbook: see "Android dev build" in `HANDOFF.md`.
+- `extra.eas.projectId` in `app.json` is the owner's EAS project id (public identifier, not a
+  secret) — written by the owner's first `eas build` and now committed. Don't regenerate it,
+  and never run `eas login`/`eas init`/`eas build` from an agent session. Runbook: see
+  "Android dev build" in `HANDOFF.md`.
+- Dev server on WSL2: never `sudo npx expo start`; use `--tunnel` or mirrored networking —
+  see "Troubleshooting: running the dev server on WSL2" in `HANDOFF.md`.
 
 # Verification
 
