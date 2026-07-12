@@ -53,6 +53,15 @@ One economy, one face: captures/completions earn **Sparks** (schema v2:
   `makeStyles(colors)` via `useMemo`. There is deliberately NO static colors
   export; never hardcode a color, always add tokens to every palette in
   `src/theme/palettes.ts` (incl. urgency ramp + companion tints).
+- **Companion drives the theme** (`themeSource` setting, default
+  `'companion'`): each companion has a signature palette via
+  `COMPANION_THEME` in `palettes.ts` (wisp→ember, pip→meadow, juno→dusk,
+  unit7→circuit, none→slate). Manual picks (Settings chips, Spark-shop
+  equip) set `themeSource: 'manual'` + `themeId`; "Match sidekick" in
+  Settings returns to companion-driven. `loadSettingsAsync` migrates
+  pre-themeSource users: non-default stored themeId ⇒ pinned manual.
+  Signature palettes are not in `THEME_META` (not shop items — they come
+  with the companion).
 - Motion: `useCalmMotion()` (OS reduced-motion OR Reduce-effects OR Chill
   vibe) must gate every spring/particle. Urgency/status is never conveyed by
   color, motion, or sound alone.
@@ -92,12 +101,23 @@ route (`launchScreen` setting opts down to Today-first).
   `BUBBLES` in `copy.ts` (all four packs; apply the copy rulebook to every
   new line). Selection reuses `pickTemplate` with a bubbles-own recent-ring
   (`recentBubbleTemplates`); the ring records lines when actually shown.
-- **Rig v2 is model + renderer:** `src/components/companion/model.ts` is a
+- **The rig is model + renderer:** `src/components/companion/model.ts` is a
   pure parametric model (species/stage/mood/theme → layers of primitive
   shapes); `SkiaRig.tsx` draws it (one Canvas; per-layer `Group` transforms
   driven by Reanimated shared values; real `BlurMask` glow on aura/shimmer).
   Never animate react-native-svg props per-frame (New-Arch potholes) — SVG
-  remains only for static art (EnergyMeter/Orb, Progress ring, bubble tail).
+  remains only for static art (EnergyMeter/Orb, Progress ring, bubble tail,
+  tab icons).
+- **Rig v3 anatomy (chibi full body):** 100×100 space, oversized head
+  (~y 6–57), torso tucked under it (overlap the seam — no gaps), stubby
+  limbs (`arms` layer, thick round strokes / rects, sways with breath phase
+  lag), feet/tail on the ground line ~y 88, shadow y 94, neckline ≈ y 57
+  (accessory anchor; halo/crown ≈ y 5). Eyes are white sclera (face layer) +
+  wandering species-dark pupil + specular highlight (pupil group). All rig
+  colors derive from `colors.companion[species]` via lighten/darken — the
+  only literal is white. To eyeball changes without a device: the model is
+  pure TS — compile it standalone and serialize shapes to SVG (the shape
+  union maps 1:1 onto SVG elements).
 - Evolution: 5 stages from `stageForLevel` (levels 1/3/5/9/14), driven by
   `progress.lifetime` so forms can never be bought or lost; stages only ever
   map upward. The evolution moment is detected via the `lastSeenStage`
@@ -105,6 +125,11 @@ route (`launchScreen` setting opts down to Today-first).
   is replayable from Progress. Poking is affection only — no economy hooks.
 - Theme rule extension: `dayPhase` tokens (morning/evening ambient tints)
   exist in EVERY palette; add them to any new palette.
+- Tab bar: custom SVG glyphs in `src/components/TabBarIcon.tsx` (filled
+  active / outline idle, highlight pill + bold label carry selection — never
+  color alone). The navigator renders BOTH focused and unfocused variants
+  and cross-fades them. `tabBarStyle.height` overrides the default, so it
+  must include `useSafeAreaInsets().bottom` itself.
 
 # EAS builds (config only — owner runs the builds)
 
