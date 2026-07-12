@@ -37,15 +37,26 @@ interface Props {
   size: number;
   /** Equipped accessory item keys (shop unlocks): scarf / halo / bowtie. */
   accessories?: string[];
+  /** Increment to play a species-flavored poke reaction (affection only). */
+  pokeSignal?: number;
 }
 
-export default function Companion({ species, mood, stage, size, accessories = [] }: Props) {
+export default function Companion({
+  species,
+  mood,
+  stage,
+  size,
+  accessories = [],
+  pokeSignal = 0,
+}: Props) {
   const { colors } = useTheme();
   const calm = useCalmMotion();
   const [blink, setBlink] = useState(false);
   const breath = useSharedValue(0); // loops 0→1; layers read sin(2π·t) with phase
   const pulse = useSharedValue(0); // slower loop for aura/glow layers
   const hop = useSharedValue(0);
+  const tilt = useSharedValue(0); // degrees; poke reactions
+  const squish = useSharedValue(0); // extra squash for poke reactions
   const lookX = useSharedValue(0); // normalized -1..1 pupil wander target
   const lookY = useSharedValue(0);
 
@@ -129,6 +140,42 @@ export default function Companion({ species, mood, stage, size, accessories = []
     };
   }, [calm, mood, lookX, lookY]);
 
+  // Poke reactions, flavored per species: Wisp wiggles, Pip does a squash
+  // bounce, Juno slow-blinks with a small head tilt, Unit-7 head-bobbles.
+  const prevPoke = useRef(pokeSignal);
+  useEffect(() => {
+    if (pokeSignal === prevPoke.current) return;
+    prevPoke.current = pokeSignal;
+    if (calm) return;
+    if (species === 'wisp') {
+      tilt.value = withSequence(
+        withTiming(-6, { duration: 90 }),
+        withTiming(6, { duration: 140 }),
+        withTiming(-3, { duration: 120 }),
+        withTiming(0, { duration: 140 }),
+      );
+    } else if (species === 'pip') {
+      squish.value = withSequence(
+        withTiming(1, { duration: 110, easing: Easing.out(Easing.quad) }),
+        withSpring(0, { damping: 7, stiffness: 260 }),
+      );
+    } else if (species === 'juno') {
+      tilt.value = withSequence(withTiming(5, { duration: 260 }), withTiming(0, { duration: 380 }));
+      setBlink(true);
+      const t1 = setTimeout(() => setBlink(false), 420);
+      return () => clearTimeout(t1);
+    } else {
+      // unit7: quick side-to-side bobble.
+      tilt.value = withSequence(
+        withTiming(4, { duration: 80 }),
+        withTiming(-4, { duration: 110 }),
+        withTiming(4, { duration: 110 }),
+        withTiming(0, { duration: 110 }),
+      );
+    }
+    return undefined;
+  }, [pokeSignal, species, calm, tilt, squish]);
+
   // Luminous companions do a tiny celebratory bounce every ~30 s.
   useEffect(() => {
     if (calm || stage < 5 || mood === 'dozing') return;
@@ -161,9 +208,18 @@ export default function Companion({ species, mood, stage, size, accessories = []
     [species, stage, mood, eyesClosed, colors, accessories],
   );
 
-  const rootStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: hop.value }, { scale: model.baseScale }],
-  }));
+  const rootStyle = useAnimatedStyle(() => {
+    const sq = squish.value * 0.08;
+    return {
+      transform: [
+        { translateY: hop.value + sq * size * 0.42 },
+        { scale: model.baseScale },
+        { rotate: `${tilt.value}deg` },
+        { scaleX: 1 + sq },
+        { scaleY: 1 - sq },
+      ],
+    };
+  });
 
   return (
     <Animated.View

@@ -34,6 +34,11 @@ export interface ThemeColors {
   highlight: string;
   ramp: UrgencyRamp;
   companion: { wisp: string; pip: string; juno: string; unit7: string };
+  /**
+   * Decorative day-phase tints blended into the Home ambient glow
+   * (morning 5–11, evening 17–5; midday uses the companion tint alone).
+   */
+  dayPhase: { morning: string; evening: string };
   /** StatusBar style that reads against this bg. */
   statusBar: 'light' | 'dark';
 }
@@ -78,6 +83,7 @@ const popLight: ThemeColors = {
   highlight: '#FDE7F1',
   ramp: RAMP_LIGHT,
   companion: { wisp: '#F08C00', pip: '#7048E8', juno: '#D6336C', unit7: '#845EF7' },
+  dayPhase: { morning: '#FFC078', evening: '#9775FA' },
   statusBar: 'dark',
 };
 
@@ -98,6 +104,7 @@ const popDark: ThemeColors = {
   highlight: '#4A2440',
   ramp: RAMP_DARK,
   companion: { wisp: '#FFC94D', pip: '#9775FA', juno: '#F06BA8', unit7: '#B197FC' },
+  dayPhase: { morning: '#B4713D', evening: '#7048E8' },
   statusBar: 'light',
 };
 
@@ -120,6 +127,7 @@ const slateLight: ThemeColors = {
   highlight: '#E3EBFE',
   ramp: RAMP_LIGHT,
   companion: { wisp: '#F0B429', pip: '#3B6FF5', juno: '#8B5CF6', unit7: '#64748B' },
+  dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
   statusBar: 'dark',
 };
 
@@ -140,6 +148,7 @@ const slateDark: ThemeColors = {
   highlight: '#243352',
   ramp: RAMP_DARK,
   companion: { wisp: '#F5C044', pip: '#6B95FF', juno: '#A78BFA', unit7: '#94A3B8' },
+  dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
   statusBar: 'light',
 };
 
@@ -162,6 +171,7 @@ const midnight: ThemeColors = {
   highlight: '#1E2A44',
   ramp: RAMP_DARK,
   companion: { wisp: '#F5C044', pip: '#5B8CFF', juno: '#9775FA', unit7: '#8296AE' },
+  dayPhase: { morning: '#8A6B3D', evening: '#4C6EF5' },
   statusBar: 'light',
 };
 
@@ -190,6 +200,7 @@ const neon: ThemeColors = {
     overdue: '#FF5C7A',
   },
   companion: { wisp: '#FF4DD8', pip: '#22D3EE', juno: '#818CF8', unit7: '#34D399' },
+  dayPhase: { morning: '#FFB020', evening: '#818CF8' },
   statusBar: 'light',
 };
 
@@ -218,6 +229,7 @@ const paperLight: ThemeColors = {
     overdue: '#C92A2A',
   },
   companion: { wisp: '#D9930D', pip: '#B4560F', juno: '#7C6A46', unit7: '#84775E' },
+  dayPhase: { morning: '#E8AC0E', evening: '#7C6A46' },
   statusBar: 'dark',
 };
 
@@ -238,6 +250,7 @@ const paperDark: ThemeColors = {
   highlight: '#403520',
   ramp: RAMP_DARK,
   companion: { wisp: '#FFC94D', pip: '#E8A552', juno: '#C6B491', unit7: '#BBAD8F' },
+  dayPhase: { morning: '#C08A3E', evening: '#6B5C3E' },
   statusBar: 'light',
 };
 
@@ -266,6 +279,7 @@ const monoLight: ThemeColors = {
     overdue: '#7F1D1D',
   },
   companion: { wisp: '#525252', pip: '#737373', juno: '#404040', unit7: '#8A8A8A' },
+  dayPhase: { morning: '#8A8A8A', evening: '#5C5C5C' },
   statusBar: 'dark',
 };
 
@@ -292,6 +306,7 @@ const monoDark: ThemeColors = {
     overdue: '#FCA5A5',
   },
   companion: { wisp: '#C7C7C7', pip: '#9E9E9E', juno: '#D4D4D4', unit7: '#8A8A8A' },
+  dayPhase: { morning: '#7A7A7A', evening: '#9E9E9E' },
   statusBar: 'light',
 };
 

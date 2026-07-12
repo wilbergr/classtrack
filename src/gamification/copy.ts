@@ -348,7 +348,7 @@ const emberBubbles: BubbleSet = {
   ],
   comeback: [
     () => "There you are!! I kept your spot warm. What's first? ✦",
-    () => 'Welcome back!! Missed your face. The board is ready when you are. ✦',
+    () => 'Welcome back!! Best part of my day. The board is ready when you are. ✦',
     () => "Hey, you're here! That's the whole battle. Let's go. ✦",
   ],
   celebrate: [

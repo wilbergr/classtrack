@@ -19,6 +19,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
@@ -58,6 +59,7 @@ import { levelProgress } from '../gamification/levels';
 import { useCalmMotion, useSettings } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import { getSettingAsync, setSettingAsync, updateSettingsAsync } from '../settings';
+import { mix } from '../components/companion/color';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 import type { AssignmentWithSubject, VoicePackId } from '../types';
 
@@ -98,8 +100,14 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
     to: CompanionStage;
   } | null>(null);
   const [evolutionVisible, setEvolutionVisible] = useState(false);
+  /** Feeding presentation: Spark motes arc into the companion on awards. */
+  const [feedSeq, setFeedSeq] = useState(0);
+  const [feeding, setFeeding] = useState(false);
+  const [pokeCount, setPokeCount] = useState(0);
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const feedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFocused = useIsFocused();
+  const calm = useCalmMotion();
 
   const species = settings.companion === 'none' ? null : settings.companion;
   const isNone = species === null;
@@ -193,6 +201,12 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
         setWoken(true); // earning always wakes a dozing buddy
         if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
         celebrateTimer.current = setTimeout(() => setCelebrating(false), CELEBRATE_MS);
+        // The feeding moment: motes arc into the companion (presentation
+        // only — SparkBurst still owns sound/haptic/toast).
+        setFeedSeq((n) => n + 1);
+        setFeeding(true);
+        if (feedTimer.current) clearTimeout(feedTimer.current);
+        feedTimer.current = setTimeout(() => setFeeding(false), 1100);
         const recent = await getRecentBubblesAsync();
         const u = composeCelebration({ packId, companionName: name, now: Date.now() }, e, recent);
         if (u) setLiveLine(u);
@@ -202,6 +216,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
     return () => {
       off();
       if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
+      if (feedTimer.current) clearTimeout(feedTimer.current);
     };
   }, [load, packId, name]);
 
@@ -266,6 +281,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
 
   /** Companion tap (poke): affection, not a mechanic. Wakes a dozing buddy. */
   const poke = useCallback(async () => {
+    setPokeCount((n) => n + 1);
     const recent = await getRecentBubblesAsync();
     const level = progress?.level ?? 1;
     if (mood === 'dozing' && !woken) {
@@ -306,6 +322,15 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
   const lp = progress ? levelProgress(progress.lifetime) : null;
   const companionSize = Math.min(260, Math.max(220, Math.round(width * 0.6)));
   const tint = species === null ? colors.primary : colors.companion[species];
+  // Day-phase tinting: the ambient glow leans warm in the morning and cool
+  // in the evening (decorative only — recomputed on each visit).
+  const hour = new Date().getHours();
+  const glowTint =
+    hour >= 5 && hour < 11
+      ? mix(tint, colors.dayPhase.morning, 0.4)
+      : hour >= 17 || hour < 5
+        ? mix(tint, colors.dayPhase.evening, 0.4)
+        : tint;
 
   const dayLabel =
     counts.dueToday === 0 && counts.dueTomorrow === 0
@@ -319,7 +344,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
 
   return (
     <View style={styles.container}>
-      <AmbientBackground tint={tint} />
+      <AmbientBackground tint={glowTint} />
       <View style={styles.stage}>
         <View style={styles.bubbleSlot}>
           {current && <SpeechBubble text={current.text} onPress={advance} plain={isNone} />}
@@ -338,7 +363,9 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
               stage={stageForLevel(lp?.level ?? 1)}
               size={companionSize}
               accessories={settings.accessories}
+              pokeSignal={pokeCount}
             />
+            {feeding && !calm && <FeedMotes key={feedSeq} size={companionSize} tint={tint} />}
           </Pressable>
         ) : (
           <View
@@ -474,6 +501,68 @@ function AmbientBackground({ tint }: { tint: string }) {
       </Svg>
       {!calm && DRIFT_SPECS.map((d, i) => <DriftShape key={i} spec={d} tint={tint} />)}
     </View>
+  );
+}
+
+// ---------- the feeding moment ----------
+
+const FEED_ANGLES = [205, 245, 285, 325, 25].map((d) => (d * Math.PI) / 180);
+
+/** Spark motes arc from the edges into the companion when Sparks land. */
+function FeedMotes({ size, tint }: { size: number; tint: string }) {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {FEED_ANGLES.map((a, i) => (
+        <FeedMote key={i} angle={a} delayMs={i * 70} size={size} tint={tint} />
+      ))}
+    </View>
+  );
+}
+
+function FeedMote({
+  angle,
+  delayMs,
+  size,
+  tint,
+}: {
+  angle: number;
+  delayMs: number;
+  size: number;
+  tint: string;
+}) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withDelay(delayMs, withTiming(1, { duration: 650, easing: Easing.in(Easing.quad) }));
+    return () => cancelAnimation(t);
+  }, [t, delayMs]);
+  const style = useAnimatedStyle(() => {
+    const r = (1 - t.value) * size * 0.72;
+    const fadeIn = Math.min(1, t.value / 0.15);
+    const fadeOut = t.value > 0.85 ? (1 - t.value) / 0.15 : 1;
+    return {
+      opacity: fadeIn * fadeOut,
+      transform: [
+        { translateX: Math.cos(angle) * r },
+        { translateY: Math.sin(angle) * r },
+        { scale: 1 - 0.45 * t.value },
+      ],
+    };
+  });
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          left: size / 2 - 5,
+          top: size / 2 - 5,
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: tint,
+        },
+        style,
+      ]}
+    />
   );
 }
 
