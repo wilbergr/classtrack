@@ -72,12 +72,35 @@ export interface SparkAward {
 export type Vibe = 'hype' | 'balanced' | 'chill';
 export type CompanionId = 'wisp' | 'pip' | 'juno' | 'unit7' | 'none';
 export type VoicePackId = 'ember' | 'sage' | 'dot' | 'plain';
-export type ThemeId = 'pop' | 'slate' | 'midnight' | 'neon' | 'paper' | 'mono';
+/**
+ * Palette ids. pop…mono are the classic manually-picked themes (Spark
+ * unlocks); ember/meadow/dusk/circuit are the companions' signature palettes,
+ * applied automatically while `themeSource` is 'companion'.
+ */
+export type ThemeId =
+  | 'pop'
+  | 'slate'
+  | 'midnight'
+  | 'neon'
+  | 'paper'
+  | 'mono'
+  | 'ember'
+  | 'meadow'
+  | 'dusk'
+  | 'circuit';
+/**
+ * What drives the app palette: the chosen companion's signature look
+ * (default) or a manually picked `themeId`.
+ */
+export type ThemeSource = 'companion' | 'manual';
 /** How level-ups celebrate (shop-unlockable beyond 'burst'). */
 export type CelebrationStyle = 'burst' | 'glow' | 'rings';
 
 export interface AppSettings {
   vibe: Vibe;
+  /** Companion look by default; 'manual' pins `themeId` instead. */
+  themeSource: ThemeSource;
+  /** The manually picked palette, used only while `themeSource` is 'manual'. */
   themeId: ThemeId;
   darkMode: 'system' | 'on' | 'off';
   companion: CompanionId;

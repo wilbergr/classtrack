@@ -5,13 +5,15 @@ import { getDb } from './db/database';
 import type { AppSettings } from './types';
 
 /**
- * Out of the box the app is playful and celebratory: Hype vibe, lively Pop
- * theme, Wisp companion, sound/haptics on. The calm/quiet experience
+ * Out of the box the app is playful and celebratory: Hype vibe, Wisp
+ * companion wearing its signature Ember look (the companion drives the app
+ * palette by default), sound/haptics on. The calm/quiet experience
  * (Balanced/Chill, muted theme, Plain/Sage voice, no companion) is the
  * opt-down a user chooses in onboarding or Settings.
  */
 export const DEFAULT_SETTINGS: AppSettings = {
   vibe: 'hype',
+  themeSource: 'companion',
   themeId: 'pop',
   darkMode: 'system',
   companion: 'wisp',
@@ -75,6 +77,12 @@ export async function setSettingAsync<T>(key: string, value: T): Promise<void> {
 /** Load the app settings into the cache. Call once at app start. */
 export async function loadSettingsAsync(): Promise<AppSettings> {
   const stored = await getSettingAsync<Partial<AppSettings>>(APP_KEY, {});
+  // Migration: settings saved before themeSource existed. A non-default
+  // themeId was a deliberate pick (onboarding choice or a Spark-shop theme) —
+  // keep it pinned; default-Pop users get the new companion-driven look.
+  if (stored.themeSource === undefined && stored.themeId && stored.themeId !== 'pop') {
+    stored.themeSource = 'manual';
+  }
   appSettings = { ...DEFAULT_SETTINGS, ...stored };
   loaded = true;
   notify();

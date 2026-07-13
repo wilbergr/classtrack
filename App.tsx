@@ -4,8 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SparkBurst from './src/components/SparkBurst';
+import TabBarIcon from './src/components/TabBarIcon';
 import { getDb } from './src/db/database';
 import { settleMomentumAsync } from './src/gamification/engine';
 import type { RootStackParamList, TabParamList } from './src/navigation';
@@ -24,19 +26,9 @@ import { ThemeProvider, useTheme, type ThemeColors } from './src/theme';
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const TAB_ICONS: Record<keyof TabParamList, string> = {
-  Home: '🏠',
-  Today: '📅',
-  Subjects: '📚',
-  Settings: '⚙️',
-};
-
-function TabIcon({ name, focused }: { name: keyof TabParamList; focused: boolean }) {
-  return <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.45 }}>{TAB_ICONS[name]}</Text>;
-}
-
 function Tabs() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   // Settings are loaded before navigation mounts; initialRouteName only
   // matters at mount, so a one-time read is correct here.
   const [initialRoute] = useState<keyof TabParamList>(() =>
@@ -46,9 +38,25 @@ function Tabs() {
     <Tab.Navigator
       initialRouteName={initialRoute}
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ focused, color }) => (
+          <TabBarIcon name={route.name} focused={focused} color={color} />
+        ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
+        // A custom height must include the bottom inset itself (the default
+        // inset padding still applies underneath the content).
+        tabBarStyle: {
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
+          height: 62 + insets.bottom,
+        },
+        tabBarIconStyle: { width: 54, height: 30 },
+        tabBarItemStyle: { paddingTop: 5 },
+        tabBarLabel: ({ focused, color }) => (
+          <Text style={{ fontSize: 11, fontWeight: focused ? '700' : '600', color }}>
+            {route.name}
+          </Text>
+        ),
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />

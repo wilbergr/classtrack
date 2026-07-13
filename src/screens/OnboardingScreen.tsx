@@ -1,6 +1,8 @@
-// First-launch picker: vibe → theme → companion (+ optional name).
-// Pre-selected to the playful set (Big / Pop / Wisp); the calm, quiet
-// experience is the opt-down. Fully skippable — skipping keeps the defaults.
+// First-launch picker: vibe → companion (+ optional name). The companion
+// brings its signature palette with it — picking a sidekick dresses the whole
+// app, so there is no separate theme step (manual themes live in Settings).
+// Pre-selected to the playful set (Big / Wisp); the calm, quiet experience is
+// the opt-down. Fully skippable — skipping keeps the defaults.
 
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -16,8 +18,15 @@ import {
 
 import Companion, { EnergyMeter } from '../components/Companion';
 import { setSettingAsync, updateSettingsAsync } from '../settings';
-import { radius, spacing, THEME_META, useTheme, type ThemeColors } from '../theme';
-import type { CompanionId, ThemeId, Vibe, VoicePackId } from '../types';
+import {
+  COMPANION_THEME,
+  PALETTES,
+  radius,
+  spacing,
+  useTheme,
+  type ThemeColors,
+} from '../theme';
+import type { CompanionId, Vibe, VoicePackId } from '../types';
 
 export const ONBOARDED_KEY = 'onboarded';
 
@@ -51,20 +60,28 @@ interface Props {
 }
 
 export default function OnboardingScreen({ onDone }: Props) {
-  const { colors } = useTheme();
+  const { colors, dark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [step, setStep] = useState(0);
   const [vibe, setVibe] = useState<Vibe>('hype');
-  const [themeId, setThemeId] = useState<ThemeId>('pop');
   const [companion, setCompanion] = useState<CompanionId>('wisp');
   const [name, setName] = useState('');
+
+  /** The signature accent each sidekick brings — shown on its chip. */
+  const accentFor = useCallback(
+    (id: CompanionId) => {
+      const palette = PALETTES[COMPANION_THEME[id]];
+      return (dark ? palette.dark : palette.light).primary;
+    },
+    [dark],
+  );
 
   const finish = useCallback(
     async (skipped: boolean) => {
       if (!skipped) {
         await updateSettingsAsync({
           vibe,
-          themeId,
+          themeSource: 'companion',
           companion,
           companionName:
             companion === 'none'
@@ -77,7 +94,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       await setSettingAsync(ONBOARDED_KEY, true);
       onDone();
     },
-    [vibe, themeId, companion, name, onDone],
+    [vibe, companion, name, onDone],
   );
 
   return (
@@ -86,7 +103,7 @@ export default function OnboardingScreen({ onDone }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.topBar}>
-        <Text style={styles.stepDots}>{['●○○', '●●○', '●●●'][step]}</Text>
+        <Text style={styles.stepDots}>{['●○', '●●'][step]}</Text>
         <Pressable onPress={() => finish(true)} hitSlop={spacing.md} accessibilityRole="button">
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
@@ -112,27 +129,11 @@ export default function OnboardingScreen({ onDone }: Props) {
 
         {step === 1 && (
           <>
-            <Text style={styles.title}>Pick a look</Text>
-            <Text style={styles.subtitle}>More themes unlock with Sparks as you go.</Text>
-            {THEME_META.map((t) => (
-              <OptionRow
-                key={t.id}
-                label={t.label}
-                blurb={t.free ? '' : 'Unlocks later with Sparks ✦'}
-                selected={themeId === t.id}
-                disabled={!t.free}
-                swatch={t.accent}
-                onPress={() => setThemeId(t.id)}
-                styles={styles}
-              />
-            ))}
-          </>
-        )}
-
-        {step === 2 && (
-          <>
             <Text style={styles.title}>Choose your sidekick</Text>
-            <Text style={styles.subtitle}>It runs on your energy — and it never guilt-trips.</Text>
+            <Text style={styles.subtitle}>
+              Each one dresses the whole app in its own colors. It runs on your energy — and it
+              never guilt-trips.
+            </Text>
             <View style={styles.preview}>
               {companion !== 'none' ? (
                 <Companion species={companion} mood="celebrating" stage={1} size={110} />
@@ -149,6 +150,7 @@ export default function OnboardingScreen({ onDone }: Props) {
                   accessibilityRole="button"
                   accessibilityState={{ selected: companion === c.id }}
                 >
+                  <View style={[styles.companionSwatch, { backgroundColor: accentFor(c.id) }]} />
                   <Text
                     style={[
                       styles.companionChipText,
@@ -186,11 +188,11 @@ export default function OnboardingScreen({ onDone }: Props) {
           <View />
         )}
         <Pressable
-          onPress={() => (step < 2 ? setStep(step + 1) : finish(false))}
+          onPress={() => (step < 1 ? setStep(step + 1) : finish(false))}
           style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}
           accessibilityRole="button"
         >
-          <Text style={styles.nextText}>{step < 2 ? 'Next' : "Let's go ✦"}</Text>
+          <Text style={styles.nextText}>{step < 1 ? 'Next' : "Let's go ✦"}</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -275,6 +277,9 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   preview: { alignItems: 'center', marginBottom: spacing.lg },
   companionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   companionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
@@ -284,6 +289,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
   },
+  companionSwatch: { width: 12, height: 12, borderRadius: 6 },
   companionChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   companionChipText: { color: colors.text, fontSize: 15, fontWeight: '600' },
   companionChipTextSelected: { color: colors.primaryText },
