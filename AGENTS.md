@@ -131,6 +131,17 @@ route (`launchScreen` setting opts down to Today-first).
   and cross-fades them. `tabBarStyle.height` overrides the default, so it
   must include `useSafeAreaInsets().bottom` itself.
 
+# Branding assets
+
+All of `assets/*.png` (icon, adaptive-icon layers, monochrome, notification,
+splash, favicon) are generated from the companion rig itself — Wisp stage 4 in
+the Ember palette — by `npm run branding` (`scripts/generate-branding.js`:
+transpiles the pure model/palettes standalone, serializes shapes to SVG,
+rasterizes with `@resvg/resvg-js`, deterministic + offline). Never hand-edit
+the PNGs; re-run the script after rig or Ember-palette changes. The `app.json`
+colors (adaptive-icon background `#251507`, splash `#FFF6EC`, notification tint
+`#D9480F`) are Ember tokens — keep them in sync with `src/theme/palettes.ts`.
+
 # EAS builds (config only — owner runs the builds)
 
 - `eas.json`: `development` (dev client, internal, APK), `preview` (internal APK), `production`
@@ -148,3 +159,10 @@ route (`launchScreen` setting opts down to Today-first).
 - `npx tsc --noEmit` must pass clean (strict mode).
 - `npx expo export --platform android --output-dir <tmp>` is a good no-device smoke test
   (full Metro + Hermes bundle catches broken imports).
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.
