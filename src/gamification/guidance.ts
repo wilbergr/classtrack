@@ -6,6 +6,7 @@
 
 import { addDays, dueStatus, formatProximity, startOfDay } from '../dates';
 import { getSettingAsync, setSettingAsync } from '../settings';
+import { STAGE_NAMES, stageForLevel } from './companion';
 import { BUBBLES, pickTemplate, type BubbleCtx, type BubbleSlot } from './copy';
 import type { ProgressSummary, WeekSummary } from './engine';
 import type { SparkEvent } from './events';
@@ -29,6 +30,8 @@ export interface Utterance {
 export interface GuidanceInputs {
   now: number;
   companionName: string;
+  /** False for the "None" energy-meter home — no identity line then. */
+  hasCompanion: boolean;
   packId: VoicePackId;
   assignments: AssignmentWithSubject[];
   progress: ProgressSummary;
@@ -100,6 +103,7 @@ export function buildBubbleCtx(inputs: GuidanceInputs): BubbleCtx {
   const { assignments, now } = inputs;
   const counts = dayCounts(assignments, now);
   const target = nudgeTarget(assignments, now);
+  const stage = stageForLevel(inputs.progress.level);
   return {
     name: inputs.companionName,
     ...counts,
@@ -108,6 +112,8 @@ export function buildBubbleCtx(inputs: GuidanceInputs): BubbleCtx {
     level: inputs.progress.level,
     momentum: inputs.progress.momentum,
     earned: 0,
+    stage: STAGE_NAMES[stage],
+    finalForm: stage >= 5,
   };
 }
 
@@ -131,6 +137,9 @@ export function composeGuidance(inputs: GuidanceInputs, recent: string[]): Utter
   else if (ctx.dueToday > 0) slots.push('daySummary');
   if (ctx.nudgeTitle) slots.push('nudge');
   if (ctx.overdue > 0) slots.push('overdueGentle');
+  // Name + stage progress lives in the rotation now that Home has no
+  // name/stage label under the companion.
+  if (inputs.hasCompanion) slots.push('identity');
 
   // Ambient filler, one flavor at most.
   if (ctx.dueToday === 0 && ctx.dueTomorrow === 0 && ctx.overdue === 0) {
@@ -165,6 +174,8 @@ export function composeCelebration(
     level: event.level,
     momentum: 0,
     earned: event.total,
+    stage: STAGE_NAMES[stageForLevel(event.level)],
+    finalForm: stageForLevel(event.level) >= 5,
   };
   const us = pickOne(slot, inputs.packId, ctx, inputs.now, recent);
   return us;
@@ -190,6 +201,8 @@ export function composeReaction(
     level,
     momentum: 0,
     earned: 0,
+    stage: STAGE_NAMES[stageForLevel(level)],
+    finalForm: stageForLevel(level) >= 5,
   };
   return pickOne(slot, inputs.packId, ctx, inputs.now, recent);
 }

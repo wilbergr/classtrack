@@ -282,6 +282,10 @@ export interface BubbleCtx {
   momentum: number;
   /** Sparks earned by the action being celebrated. */
   earned: number;
+  /** Display name of the companion's evolution stage (e.g. "Sprout"). */
+  stage: string;
+  /** True at the last evolution stage — growth talk becomes pride talk. */
+  finalForm: boolean;
 }
 
 export type BubbleSlot =
@@ -300,7 +304,9 @@ export type BubbleSlot =
   | 'windDown'
   | 'weekend'
   | 'idlePoke'
-  | 'dozing';
+  | 'dozing'
+  /** Name + stage-progress intro — replaces the old Home name/stage label. */
+  | 'identity';
 
 export type BubbleTemplate = (ctx: BubbleCtx) => string;
 export type BubbleSet = Record<BubbleSlot, BubbleTemplate[]>;
@@ -380,6 +386,16 @@ const emberBubbles: BubbleSet = {
     (c) => `Level ${c.level} and climbing. Just saying. ✦`,
   ],
   dozing: [() => '…zzz… (tap to say hi)'],
+  identity: [
+    (c) =>
+      c.finalForm
+        ? `${c.name} here — ${c.stage} form! Fully grown, and it's all thanks to you. ✦`
+        : `${c.name} here — ${c.stage} form! Keep the Sparks coming and I get even bigger. ✦`,
+    (c) =>
+      c.finalForm
+        ? `It's me, ${c.name}! Level ${c.level}, final form, maximum sparkle. ✦`
+        : `It's me, ${c.name}! Level ${c.level} ${c.stage} — my next form is already wiggling. ✦`,
+  ],
 };
 
 const sageBubbles: BubbleSet = {
@@ -447,6 +463,16 @@ const sageBubbles: BubbleSet = {
     () => 'Hm? Oh — hello.',
   ],
   dozing: [() => 'Resting… (tap to say hi)'],
+  identity: [
+    (c) =>
+      c.finalForm
+        ? `I'm ${c.name} — ${c.stage} stage, my last form. Grown entirely from your steady work.`
+        : `I'm ${c.name} — ${c.stage} stage for now. Every Spark grows me a little.`,
+    (c) =>
+      c.finalForm
+        ? `${c.name}, level ${c.level}. I've finished growing; the rest is just company.`
+        : `${c.name}, level ${c.level}. My next form arrives in its own time — no rush.`,
+  ],
 };
 
 const dotBubbles: BubbleSet = {
@@ -514,6 +540,11 @@ const dotBubbles: BubbleSet = {
     () => 'You rang. I have no bell. Mysterious.',
   ],
   dozing: [() => 'zzz… (tap to reboot)'],
+  identity: [
+    (c) =>
+      `Designation: ${c.name}. Form: ${c.stage}. ${c.finalForm ? 'Upgrades: complete. Beep.' : 'Next upgrade: brewing. Beep.'}`,
+    (c) => `${c.name}. Level ${c.level}. ${c.stage} form. Status: pleased to be here.`,
+  ],
 };
 
 const plainBubbles: BubbleSet = {
@@ -545,6 +576,7 @@ const plainBubbles: BubbleSet = {
   weekend: [],
   idlePoke: [() => 'Hi.'],
   dozing: [() => 'Resting. Tap to say hi.'],
+  identity: [(c) => `${c.name} — ${c.stage}, level ${c.level}.`],
 };
 
 export const BUBBLES: Record<VoicePackId, BubbleSet> = {

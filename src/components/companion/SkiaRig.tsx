@@ -43,7 +43,14 @@ export default function SkiaRig({ model, size, breath, pulse, lookX, lookY, calm
       {/* The model lives in a 100×100 space; scale once at the root. */}
       <Group transform={[{ scale: size / 100 }]}>
         {model.layers.map((layer) => (
-          <LayerGroup key={layer.id} layer={layer} breath={breath} pulse={pulse} calm={calm} />
+          <LayerGroup
+            key={layer.id}
+            layer={layer}
+            breath={breath}
+            pulse={pulse}
+            calm={calm}
+            float={model.float ?? 0}
+          />
         ))}
         {model.pupils && (
           <PupilGroup
@@ -52,6 +59,7 @@ export default function SkiaRig({ model, size, breath, pulse, lookX, lookY, calm
             lookX={lookX}
             lookY={lookY}
             calm={calm}
+            float={model.float ?? 0}
           />
         )}
       </Group>
@@ -59,29 +67,49 @@ export default function SkiaRig({ model, size, breath, pulse, lookX, lookY, calm
   );
 }
 
+/**
+ * Asymmetric "organic" breath wave: phase-modulating the sine gives a quick
+ * inhale and a slow exhale while keeping the amplitude in [-1, 1].
+ */
+function breathWave(phase: number): number {
+  'worklet';
+  const t = phase * TWO_PI;
+  return Math.sin(t + 0.55 * Math.sin(t));
+}
+
 function LayerGroup({
   layer,
   breath,
   pulse,
   calm,
+  float,
 }: {
   layer: RigLayer;
   breath: SharedValue<number>;
   pulse: SharedValue<number>;
   calm: boolean;
+  float: number;
 }) {
   const transform = useDerivedValue(() => {
+    // Hover bob shared by every layer but the ground shadow.
+    const bob = calm || float === 0 ? 0 : Math.sin(breath.value * TWO_PI) * float;
     if (layer.pulse) {
       const p = calm ? 0.5 : Math.sin(pulse.value * TWO_PI) * 0.5 + 0.5;
-      return [{ scale: 1 + 0.05 * p }];
+      return [{ translateY: -bob }, { scale: 1 + 0.05 * p }];
     }
-    const s = calm ? 0 : Math.sin((breath.value + layer.breathPhase) * TWO_PI) * layer.breathAmp;
+    if (layer.id === 'shadow') {
+      // The shadow stays grounded and narrows a touch as the body rises.
+      if (bob === 0) return [];
+      const rise = (Math.sin(breath.value * TWO_PI) + 1) / 2;
+      return [{ scaleX: 1 - 0.1 * rise }];
+    }
+    const s = calm ? 0 : breathWave(breath.value + layer.breathPhase) * layer.breathAmp;
     const sway = layer.sway ?? 0;
     const rot =
       calm || sway === 0
         ? 0
         : Math.sin((breath.value + layer.breathPhase + 0.25) * TWO_PI) * sway * DEG;
-    return [{ scaleX: 1 + s }, { scaleY: 1 - s * 0.85 }, { rotate: rot }];
+    return [{ translateY: -bob }, { scaleX: 1 + s }, { scaleY: 1 - s * 0.85 }, { rotate: rot }];
   });
   const opacity = useDerivedValue(() => {
     if (!layer.pulse) return 1;
@@ -92,14 +120,18 @@ function LayerGroup({
   // Real glow where the SVG renderer faked it with gradient stacks.
   const blur = layer.id === 'aura' ? 5 : layer.id === 'shimmer' ? 2.5 : 0;
 
+  // Squash anchors at the feet so ground contact holds; pulses breathe
+  // around the aura's own center; a pivot makes sway read as a hinge.
+  const origin = layer.pulse
+    ? vec(50, 56)
+    : layer.id === 'shadow'
+      ? vec(50, 94)
+      : layer.pivot
+        ? vec(layer.pivot.x, layer.pivot.y)
+        : vec(50, 92);
+
   return (
-    <Group
-      transform={transform}
-      // Squash anchors at the feet so ground contact holds; pulses breathe
-      // around the aura's own center.
-      origin={layer.pulse ? vec(50, 56) : vec(50, 92)}
-      opacity={opacity}
-    >
+    <Group transform={transform} origin={origin} opacity={opacity}>
       {blur > 0 && <BlurMask blur={blur} style="normal" />}
       {layer.shapes.map((s, i) => (
         <ShapeNode key={i} shape={s} />
@@ -114,19 +146,22 @@ function PupilGroup({
   lookX,
   lookY,
   calm,
+  float,
 }: {
   pupils: NonNullable<RigModel['pupils']>;
   breath: SharedValue<number>;
   lookX: SharedValue<number>;
   lookY: SharedValue<number>;
   calm: boolean;
+  float: number;
 }) {
   const transform = useDerivedValue(() => {
-    // Rides the same squash as the face layer, plus the wander offset.
-    const s = calm ? 0 : Math.sin((breath.value + 0.22) * TWO_PI) * 0.015;
+    // Rides the same squash + hover as the face layer, plus the wander offset.
+    const s = calm ? 0 : breathWave(breath.value + 0.22) * 0.015;
+    const bob = calm || float === 0 ? 0 : Math.sin(breath.value * TWO_PI) * float;
     return [
       { translateX: calm ? 0 : lookX.value * pupils.range },
-      { translateY: calm ? 0 : lookY.value * pupils.range },
+      { translateY: (calm ? 0 : lookY.value * pupils.range) - bob },
       { scaleX: 1 + s },
       { scaleY: 1 - s * 0.85 },
     ];

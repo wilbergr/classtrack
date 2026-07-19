@@ -83,12 +83,13 @@ export default function Companion({
     return () => cancelAnimation(pulse);
   }, [calm, pulse]);
 
-  // Blinks: irregular, occasionally double; Juno is a famous slow-blinker.
+  // Blinks: irregular, occasionally double; Juno and Otto are famous
+  // slow-blinkers (cat affection, owl gravitas).
   useEffect(() => {
     if (calm || mood === 'dozing') return;
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
-    const closeMs = species === 'juno' ? 240 : 130;
+    const closeMs = species === 'juno' || species === 'otto' ? 240 : 130;
     const schedule = () => {
       timer = setTimeout(() => {
         if (!alive) return;
@@ -140,7 +141,8 @@ export default function Companion({
   }, [calm, mood, lookX, lookY]);
 
   // Poke reactions, flavored per species: Wisp wiggles, Pip does a squash
-  // bounce, Juno slow-blinks with a small head tilt, Unit-7 head-bobbles.
+  // bounce, Juno slow-blinks with a small head tilt, Nova does a heroic hop,
+  // Rex a stompy wiggle, Otto a slow owlish head swivel, Unit-7 head-bobbles.
   const prevPoke = useRef(pokeSignal);
   useEffect(() => {
     if (pokeSignal === prevPoke.current) return;
@@ -163,6 +165,26 @@ export default function Companion({
       setBlink(true);
       const t1 = setTimeout(() => setBlink(false), 420);
       return () => clearTimeout(t1);
+    } else if (species === 'nova') {
+      hop.value = withSequence(
+        withSpring(-size * 0.09, { damping: 7, stiffness: 340 }),
+        withSpring(0, { damping: 9 }),
+      );
+    } else if (species === 'rex') {
+      squish.value = withSequence(
+        withTiming(0.9, { duration: 100, easing: Easing.out(Easing.quad) }),
+        withSpring(0, { damping: 6, stiffness: 240 }),
+      );
+      tilt.value = withSequence(
+        withTiming(-4, { duration: 110 }),
+        withTiming(3, { duration: 130 }),
+        withTiming(0, { duration: 120 }),
+      );
+    } else if (species === 'otto') {
+      tilt.value = withSequence(withTiming(9, { duration: 300 }), withTiming(0, { duration: 450 }));
+      setBlink(true);
+      const t1 = setTimeout(() => setBlink(false), 480);
+      return () => clearTimeout(t1);
     } else {
       // unit7: quick side-to-side bobble.
       tilt.value = withSequence(
@@ -173,7 +195,7 @@ export default function Companion({
       );
     }
     return undefined;
-  }, [pokeSignal, species, calm, tilt, squish]);
+  }, [pokeSignal, species, calm, tilt, squish, hop, size]);
 
   // Luminous companions do a tiny celebratory bounce every ~30 s.
   useEffect(() => {

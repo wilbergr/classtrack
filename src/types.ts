@@ -70,12 +70,13 @@ export interface SparkAward {
 }
 
 export type Vibe = 'hype' | 'balanced' | 'chill';
-export type CompanionId = 'wisp' | 'pip' | 'juno' | 'unit7' | 'none';
+export type CompanionId = 'wisp' | 'pip' | 'juno' | 'unit7' | 'nova' | 'rex' | 'otto' | 'none';
 export type VoicePackId = 'ember' | 'sage' | 'dot' | 'plain';
 /**
  * Palette ids. pop…mono are the classic manually-picked themes (Spark
- * unlocks); ember/meadow/dusk/circuit are the companions' signature palettes,
- * applied automatically while `themeSource` is 'companion'.
+ * unlocks); ember/meadow/dusk/circuit/rocket/lagoon/nocturne are the
+ * companions' signature palettes, applied automatically while `themeSource`
+ * is 'companion'.
  */
 export type ThemeId =
   | 'pop'
@@ -89,7 +90,10 @@ export type ThemeId =
   | 'ember'
   | 'meadow'
   | 'dusk'
-  | 'circuit';
+  | 'circuit'
+  | 'rocket'
+  | 'lagoon'
+  | 'nocturne';
 /**
  * What drives the app palette: the chosen companion's signature look
  * (default) or a manually picked `themeId`.

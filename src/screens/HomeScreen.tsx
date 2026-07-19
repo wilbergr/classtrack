@@ -10,7 +10,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -32,12 +31,7 @@ import SparkPill from '../components/SparkPill';
 import SpeechBubble from '../components/SpeechBubble';
 import { listOpenAssignmentsWithSubject, listSubjects } from '../db/database';
 import { startOfDay } from '../dates';
-import {
-  deriveMood,
-  stageForLevel,
-  STAGE_NAMES,
-  type CompanionStage,
-} from '../gamification/companion';
+import { deriveMood, stageForLevel, type CompanionStage } from '../gamification/companion';
 import {
   getProgressSummaryAsync,
   getWeekSummaryAsync,
@@ -58,7 +52,7 @@ import {
 import { levelProgress } from '../gamification/levels';
 import { useCalmMotion, useSettings } from '../hooks';
 import type { TabScreenProps } from '../navigation';
-import { getSettingAsync, setSettingAsync, updateSettingsAsync } from '../settings';
+import { getSettingAsync, setSettingAsync } from '../settings';
 import { mix } from '../components/companion/color';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 import type { AssignmentWithSubject, VoicePackId } from '../types';
@@ -93,8 +87,6 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
   /** Poking a dozing companion wakes it for this session (no economy touch). */
   const [woken, setWoken] = useState(false);
   const [quickAddVisible, setQuickAddVisible] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState('');
   const [pendingEvolution, setPendingEvolution] = useState<{
     from: CompanionStage;
     to: CompanionStage;
@@ -174,6 +166,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
         {
           now,
           companionName: name,
+          hasCompanion: species !== null,
           packId,
           assignments: open,
           progress: p,
@@ -313,14 +306,11 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
     return false;
   }, [hasSubjects, navigation]);
 
-  const commitName = useCallback(async () => {
-    setEditingName(false);
-    const trimmed = nameDraft.trim();
-    if (trimmed && trimmed !== name) await updateSettingsAsync({ companionName: trimmed });
-  }, [nameDraft, name]);
-
   const lp = progress ? levelProgress(progress.lifetime) : null;
-  const companionSize = Math.min(260, Math.max(220, Math.round(width * 0.6)));
+  // The companion is the star of the screen — it grew when the name/stage
+  // label moved into its own speech bubble (the 'identity' line). Renaming
+  // lives in Settings → Sidekick.
+  const companionSize = Math.min(320, Math.max(240, Math.round(width * 0.72)));
   const tint = species === null ? colors.primary : colors.companion[species];
   // Day-phase tinting: the ambient glow leans warm in the morning and cool
   // in the evening (decorative only — recomputed on each visit).
@@ -380,33 +370,6 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
           </View>
         )}
 
-        {!isNone &&
-          (editingName ? (
-            <TextInput
-              value={nameDraft}
-              onChangeText={setNameDraft}
-              onEndEditing={commitName}
-              onSubmitEditing={commitName}
-              autoFocus
-              maxLength={24}
-              style={styles.nameInput}
-              returnKeyType="done"
-            />
-          ) : (
-            <Pressable
-              onPress={() => {
-                setNameDraft(name);
-                setEditingName(true);
-              }}
-              accessibilityRole="button"
-              accessibilityHint="Rename"
-              style={styles.nameChip}
-            >
-              <Text style={styles.nameText}>
-                {name} · {STAGE_NAMES[stageForLevel(lp?.level ?? 1)]}
-              </Text>
-            </Pressable>
-          ))}
         {isNone && lp && (
           <Text style={styles.nameText}>Level {lp.level}</Text>
         )}
@@ -627,30 +590,7 @@ const makeStyles = (colors: ThemeColors) =>
     },
     bubbleSlot: { minHeight: 84, justifyContent: 'flex-end', marginBottom: spacing.sm },
     companionPress: { alignItems: 'center', justifyContent: 'center', minWidth: 48, minHeight: 48 },
-    nameChip: {
-      marginTop: spacing.sm,
-      paddingVertical: spacing.xs + 2,
-      paddingHorizontal: spacing.md,
-      borderRadius: 999,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      minHeight: 32,
-    },
     nameText: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: spacing.xs },
-    nameInput: {
-      marginTop: spacing.sm,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      borderRadius: radius.sm,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.xs + 2,
-      fontSize: 14,
-      color: colors.text,
-      backgroundColor: colors.card,
-      minWidth: 160,
-      textAlign: 'center',
-    },
     dayCard: {
       alignItems: 'center',
       gap: spacing.sm,

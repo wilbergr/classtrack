@@ -61,7 +61,8 @@ One economy, one face: captures/completions earn **Sparks** (schema v2:
 - **Companion drives the theme** (`themeSource` setting, default
   `'companion'`): each companion has a signature palette via
   `COMPANION_THEME` in `palettes.ts` (wisp→ember, pip→meadow, juno→dusk,
-  unit7→circuit, none→slate). Manual picks (Settings chips, Spark-shop
+  unit7→circuit, nova→rocket, rex→lagoon, otto→nocturne, none→slate).
+  Manual picks (Settings chips, Spark-shop
   equip) set `themeSource: 'manual'` + `themeId`; "Match sidekick" in
   Settings returns to companion-driven. `loadSettingsAsync` migrates
   pre-themeSource users: non-default stored themeId ⇒ pinned manual.
@@ -100,7 +101,10 @@ route (`launchScreen` setting opts down to Today-first).
 
 - `src/screens/HomeScreen.tsx` — bubble queue + big companion + glance day
   card + quick add/Progress actions. Companion `none` renders the `EnergyOrb`
-  home with Plain-pack info-card bubbles; same layout, no dead end.
+  home with Plain-pack info-card bubbles; same layout, no dead end. There is
+  deliberately NO name/stage label under the companion — the `identity`
+  bubble slot carries name + stage progress instead; renaming lives in
+  Settings → Sidekick.
 - `src/gamification/guidance.ts` — speech bubbles are deterministic
   templates over on-device day data (NO network/LLM, ever). Slots live in
   `BUBBLES` in `copy.ts` (all four packs; apply the copy rulebook to every
@@ -118,11 +122,17 @@ route (`launchScreen` setting opts down to Today-first).
   limbs (`arms` layer, thick round strokes / rects, sways with breath phase
   lag), feet/tail on the ground line ~y 88, shadow y 94, neckline ≈ y 57
   (accessory anchor; halo/crown ≈ y 5). Eyes are white sclera (face layer) +
-  wandering species-dark pupil + specular highlight (pupil group). All rig
-  colors derive from `colors.companion[species]` via lighten/darken — the
-  only literal is white. To eyeball changes without a device: the model is
-  pure TS — compile it standalone and serialize shapes to SVG (the shape
-  union maps 1:1 onto SVG elements).
+  a wandering pupil group: tinted iris ring, species-dark pupil, dual
+  catchlights, converged ~0.5 inward. Layers may set `pivot` so sway reads
+  as a hinge (arms at the shoulder, sprouts at the base); `RigModel.float`
+  hover-bobs every layer but the shadow (Wisp), which narrows as the body
+  rises; the renderer's `breathWave` is an asymmetric sine (quick inhale,
+  slow exhale). All rig colors derive from `colors.companion[species]` via
+  lighten/darken — the only literal is white. Seven species share `cuteFace`
+  except unit7 (screen face); otto passes `beak`/`eyeScale`. To eyeball
+  changes without a device: the model is pure TS — compile it standalone and
+  serialize shapes to SVG (the shape union maps 1:1 onto SVG elements), as
+  `scripts/generate-branding.js` does.
 - Evolution: 5 stages from `stageForLevel` (levels 1/3/5/9/14), driven by
   `progress.lifetime` so forms can never be bought or lost; stages only ever
   map upward. The evolution moment is detected via the `lastSeenStage`
