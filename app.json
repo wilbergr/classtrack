@@ -43,7 +43,9 @@
           "backgroundColor": "#E6F4FE"
         }
       ],
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      "expo-asset",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {
