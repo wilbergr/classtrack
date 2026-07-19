@@ -36,4 +36,6 @@ export const THEME_META: ThemeMeta[] = [
   { id: 'neon', label: 'Neon', accent: '#22D3EE', free: false, cost: 150 },
   { id: 'paper', label: 'Paper', accent: '#B4560F', free: false, cost: 150 },
   { id: 'mono', label: 'Mono', accent: '#171717', free: false, cost: 150 },
+  { id: 'ocean', label: 'Ocean', accent: '#1864AB', free: false, cost: 150 },
+  { id: 'aurora', label: 'Aurora', accent: '#2BD9A8', free: false, cost: 200 },
 ];
