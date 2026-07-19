@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 
+import VoiceCaptureButton from '../components/VoiceCaptureButton';
 import {
   createAssignment,
   deleteAssignment,
@@ -23,6 +24,7 @@ import {
 } from '../db/database';
 import { formatDayLabel, formatTime } from '../dates';
 import { awardCaptureAsync } from '../gamification/engine';
+import { useSettings } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { cancelRemindersAsync, refreshAssignmentRemindersAsync } from '../notifications';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
@@ -43,6 +45,7 @@ export default function AssignmentEditScreen({
 }: RootStackScreenProps<'AssignmentEdit'>) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const { voiceCaptureOn } = useSettings();
   const assignmentId = route.params?.assignmentId;
   const presetSubjectId = route.params?.subjectId;
   const draft = route.params?.draft;
@@ -174,15 +177,18 @@ export default function AssignmentEditScreen({
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.fieldLabel}>Title</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="e.g. Worksheet p. 12–14"
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-          autoFocus={!isEditing}
-          maxLength={120}
-        />
+        <View style={styles.inputRow}>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder="e.g. Worksheet p. 12–14"
+            placeholderTextColor={colors.textMuted}
+            style={[styles.input, styles.inputFlex]}
+            autoFocus={!isEditing}
+            maxLength={120}
+          />
+          {voiceCaptureOn && <VoiceCaptureButton onTranscript={setTitle} />}
+        </View>
 
         <Text style={styles.fieldLabel}>Subject</Text>
         <View style={styles.chipWrap}>
@@ -253,26 +259,29 @@ export default function AssignmentEditScreen({
         </Text>
 
         <Text style={styles.fieldLabel}>Notes</Text>
-        <TextInput
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Anything to remember — pages, materials, topics…"
-          placeholderTextColor={colors.textMuted}
-          style={[styles.input, styles.notesInput]}
-          multiline
-          maxLength={2000}
-          // The field grows as the user types; keep following it or the caret
-          // drifts below the keyboard (focus/keyboardDidShow alone only cover
-          // the initial moment, not growth while typing).
-          onContentSizeChange={scrollNotesIntoView}
-          onFocus={() => {
-            notesFocused.current = true;
-            scrollNotesIntoView(); // keyboard may already be up (focus moved from another field)
-          }}
-          onBlur={() => {
-            notesFocused.current = false;
-          }}
-        />
+        <View style={styles.inputRowTop}>
+          <TextInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Anything to remember — pages, materials, topics…"
+            placeholderTextColor={colors.textMuted}
+            style={[styles.input, styles.inputFlex, styles.notesInput]}
+            multiline
+            maxLength={2000}
+            // The field grows as the user types; keep following it or the caret
+            // drifts below the keyboard (focus/keyboardDidShow alone only cover
+            // the initial moment, not growth while typing).
+            onContentSizeChange={scrollNotesIntoView}
+            onFocus={() => {
+              notesFocused.current = true;
+              scrollNotesIntoView(); // keyboard may already be up (focus moved from another field)
+            }}
+            onBlur={() => {
+              notesFocused.current = false;
+            }}
+          />
+          {voiceCaptureOn && <VoiceCaptureButton onTranscript={setNotes} />}
+        </View>
 
         <Pressable
           onPress={save}
@@ -324,6 +333,10 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   // maxHeight caps growth so a long note never outgrows the keyboard-shrunken
   // viewport; past it the input scrolls internally, which keeps the caret visible.
   notesInput: { minHeight: 88, maxHeight: 180, textAlignVertical: 'top' },
+  inputFlex: { flex: 1 },
+  inputRow: { flexDirection: 'row', alignItems: 'center' },
+  // Notes grows taller than the mic button; pin the button to the field's top edge.
+  inputRowTop: { flexDirection: 'row', alignItems: 'flex-start' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     flexDirection: 'row',
