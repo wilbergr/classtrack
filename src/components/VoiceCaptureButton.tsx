@@ -1,7 +1,8 @@
-// Mic-to-title for Quick Add. The transcript only ever lands in the title
-// field — it never auto-commits. Prefers on-device recognition when the OS
-// supports it; ships default-off with a disclosure in Settings because some
-// devices route OS speech recognition through vendor servers.
+// Mic-to-field dictation (Quick Add title, editor title/notes). The transcript
+// only ever lands in its field — it never auto-commits. Prefers on-device
+// recognition when the OS supports it; ships default-off with a disclosure in
+// Settings because some devices route OS speech recognition through vendor
+// servers.
 
 import {
   ExpoSpeechRecognitionModule,
@@ -56,6 +57,10 @@ export default function VoiceCaptureButton({ onTranscript }: Props) {
   const [listening, setListening] = useState(false);
 
   useSpeechRecognitionEvent('result', (event) => {
+    // Recognition events are module-global; when several buttons are mounted
+    // (e.g. title + notes on the edit screen) only the one that started the
+    // session may consume the transcript.
+    if (!listening) return;
     const transcript = event.results[0]?.transcript;
     if (transcript) onTranscript(transcript);
   });
