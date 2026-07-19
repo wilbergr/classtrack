@@ -8,10 +8,42 @@ import {
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import Svg, { Line, Path, Rect } from 'react-native-svg';
 
 import { hapticSelect } from '../feedback';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
+
+// Hand-drawn glyphs in the tab-bar icon style (see TabBarIcon.tsx):
+// static SVG, rounded strokes, themed via useTheme() — never a raw emoji.
+const VIEW = 22;
+
+/** Outline mic: capsule body, cradle arc, stem and base. */
+function MicGlyph({ color }: { color: string }) {
+  return (
+    <Svg width={VIEW} height={VIEW} viewBox={`0 0 ${VIEW} ${VIEW}`}>
+      <Rect x={8} y={2.5} width={6} height={10.5} rx={3} fill="none" stroke={color} strokeWidth={2} />
+      <Path
+        d="M 5.5 10.5 A 5.5 5.5 0 0 0 16.5 10.5"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Line x1={11} y1={16} x2={11} y2={19} stroke={color} strokeWidth={2} strokeLinecap="round" />
+      <Line x1={7.5} y1={19.5} x2={14.5} y2={19.5} stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/** Filled rounded stop square for the "tap to stop" state. */
+function StopGlyph({ color }: { color: string }) {
+  return (
+    <Svg width={VIEW} height={VIEW} viewBox={`0 0 ${VIEW} ${VIEW}`}>
+      <Rect x={5.5} y={5.5} width={11} height={11} rx={3} fill={color} />
+    </Svg>
+  );
+}
 
 interface Props {
   /** Called with the (interim or final) transcript as the user speaks. */
@@ -60,7 +92,7 @@ export default function VoiceCaptureButton({ onTranscript }: Props) {
       accessibilityLabel={listening ? 'Stop voice capture' : 'Start voice capture'}
       accessibilityState={{ selected: listening }}
     >
-      <Text style={styles.icon}>{listening ? '⏹' : '🎤'}</Text>
+      {listening ? <StopGlyph color={colors.danger} /> : <MicGlyph color={colors.text} />}
     </Pressable>
   );
 }
@@ -79,5 +111,4 @@ const makeStyles = (colors: ThemeColors) =>
       marginLeft: spacing.sm,
     },
     listening: { borderColor: colors.danger, backgroundColor: colors.highlight },
-    icon: { fontSize: 18 },
   });
