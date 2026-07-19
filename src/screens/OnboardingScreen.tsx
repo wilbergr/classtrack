@@ -41,6 +41,9 @@ const COMPANIONS: { id: CompanionId; label: string; blurb: string }[] = [
   { id: 'pip', label: 'Pip', blurb: 'Round, bouncy, endlessly pleased' },
   { id: 'juno', label: 'Juno', blurb: 'A cat. Approves of finished homework' },
   { id: 'unit7', label: 'Unit-7', blurb: 'A robot of few words' },
+  { id: 'nova', label: 'Nova', blurb: 'A pocket-size superhero on your team' },
+  { id: 'rex', label: 'Rex', blurb: 'A tiny dino with a mighty cheer' },
+  { id: 'otto', label: 'Otto', blurb: 'A night owl who loves a good plan' },
   { id: 'none', label: 'None', blurb: 'Just a clean energy meter' },
 ];
 
@@ -49,6 +52,9 @@ const DEFAULT_NAMES: Record<Exclude<CompanionId, 'none'>, string> = {
   pip: 'Pip',
   juno: 'Juno',
   unit7: 'Unit-7',
+  nova: 'Nova',
+  rex: 'Rex',
+  otto: 'Otto',
 };
 
 function voiceForVibe(vibe: Vibe): VoicePackId {

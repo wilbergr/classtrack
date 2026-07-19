@@ -33,7 +33,7 @@ export interface ThemeColors {
   spark: string;
   highlight: string;
   ramp: UrgencyRamp;
-  companion: { wisp: string; pip: string; juno: string; unit7: string };
+  companion: Record<Exclude<CompanionId, 'none'>, string>;
   /**
    * Decorative day-phase tints blended into the Home ambient glow
    * (morning 5–11, evening 17–5; midday uses the companion tint alone).
@@ -82,7 +82,7 @@ const popLight: ThemeColors = {
   spark: '#F08C00',
   highlight: '#FDE7F1',
   ramp: RAMP_LIGHT,
-  companion: { wisp: '#F08C00', pip: '#7048E8', juno: '#D6336C', unit7: '#845EF7' },
+  companion: { wisp: '#F08C00', pip: '#7048E8', juno: '#D6336C', unit7: '#845EF7', nova: '#FA5252', rex: '#12B886', otto: '#4C6EF5' },
   dayPhase: { morning: '#FFC078', evening: '#9775FA' },
   statusBar: 'dark',
 };
@@ -103,7 +103,7 @@ const popDark: ThemeColors = {
   spark: '#FFC94D',
   highlight: '#4A2440',
   ramp: RAMP_DARK,
-  companion: { wisp: '#FFC94D', pip: '#9775FA', juno: '#F06BA8', unit7: '#B197FC' },
+  companion: { wisp: '#FFC94D', pip: '#9775FA', juno: '#F06BA8', unit7: '#B197FC', nova: '#FF8787', rex: '#38D9A9', otto: '#748FFC' },
   dayPhase: { morning: '#B4713D', evening: '#7048E8' },
   statusBar: 'light',
 };
@@ -126,7 +126,7 @@ const slateLight: ThemeColors = {
   spark: '#F0B429',
   highlight: '#E3EBFE',
   ramp: RAMP_LIGHT,
-  companion: { wisp: '#F0B429', pip: '#3B6FF5', juno: '#8B5CF6', unit7: '#64748B' },
+  companion: { wisp: '#F0B429', pip: '#3B6FF5', juno: '#8B5CF6', unit7: '#64748B', nova: '#F03E3E', rex: '#0CA678', otto: '#5C7CFA' },
   dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
   statusBar: 'dark',
 };
@@ -147,7 +147,7 @@ const slateDark: ThemeColors = {
   spark: '#F5C044',
   highlight: '#243352',
   ramp: RAMP_DARK,
-  companion: { wisp: '#F5C044', pip: '#6B95FF', juno: '#A78BFA', unit7: '#94A3B8' },
+  companion: { wisp: '#F5C044', pip: '#6B95FF', juno: '#A78BFA', unit7: '#94A3B8', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
   dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
   statusBar: 'light',
 };
@@ -170,7 +170,7 @@ const midnight: ThemeColors = {
   spark: '#F5C044',
   highlight: '#1E2A44',
   ramp: RAMP_DARK,
-  companion: { wisp: '#F5C044', pip: '#5B8CFF', juno: '#9775FA', unit7: '#8296AE' },
+  companion: { wisp: '#F5C044', pip: '#5B8CFF', juno: '#9775FA', unit7: '#8296AE', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
   dayPhase: { morning: '#8A6B3D', evening: '#4C6EF5' },
   statusBar: 'light',
 };
@@ -199,7 +199,7 @@ const neon: ThemeColors = {
     today: '#FB923C',
     overdue: '#FF5C7A',
   },
-  companion: { wisp: '#FF4DD8', pip: '#22D3EE', juno: '#818CF8', unit7: '#34D399' },
+  companion: { wisp: '#FF4DD8', pip: '#22D3EE', juno: '#818CF8', unit7: '#34D399', nova: '#FF5C7A', rex: '#2DD4BF', otto: '#A78BFA' },
   dayPhase: { morning: '#FFB020', evening: '#818CF8' },
   statusBar: 'light',
 };
@@ -228,7 +228,7 @@ const paperLight: ThemeColors = {
     today: '#E8590C',
     overdue: '#C92A2A',
   },
-  companion: { wisp: '#D9930D', pip: '#B4560F', juno: '#7C6A46', unit7: '#84775E' },
+  companion: { wisp: '#D9930D', pip: '#B4560F', juno: '#7C6A46', unit7: '#84775E', nova: '#B0413E', rex: '#6E8F3D', otto: '#5E6B9E' },
   dayPhase: { morning: '#E8AC0E', evening: '#7C6A46' },
   statusBar: 'dark',
 };
@@ -249,7 +249,7 @@ const paperDark: ThemeColors = {
   spark: '#FFC94D',
   highlight: '#403520',
   ramp: RAMP_DARK,
-  companion: { wisp: '#FFC94D', pip: '#E8A552', juno: '#C6B491', unit7: '#BBAD8F' },
+  companion: { wisp: '#FFC94D', pip: '#E8A552', juno: '#C6B491', unit7: '#BBAD8F', nova: '#F5A3A3', rex: '#B6CC7E', otto: '#A9B4E0' },
   dayPhase: { morning: '#C08A3E', evening: '#6B5C3E' },
   statusBar: 'light',
 };
@@ -278,7 +278,7 @@ const monoLight: ThemeColors = {
     today: '#333333',
     overdue: '#7F1D1D',
   },
-  companion: { wisp: '#525252', pip: '#737373', juno: '#404040', unit7: '#8A8A8A' },
+  companion: { wisp: '#525252', pip: '#737373', juno: '#404040', unit7: '#8A8A8A', nova: '#5E5E5E', rex: '#7F7F7F', otto: '#474747' },
   dayPhase: { morning: '#8A8A8A', evening: '#5C5C5C' },
   statusBar: 'dark',
 };
@@ -305,7 +305,7 @@ const monoDark: ThemeColors = {
     today: '#D4D4D4',
     overdue: '#FCA5A5',
   },
-  companion: { wisp: '#C7C7C7', pip: '#9E9E9E', juno: '#D4D4D4', unit7: '#8A8A8A' },
+  companion: { wisp: '#C7C7C7', pip: '#9E9E9E', juno: '#D4D4D4', unit7: '#8A8A8A', nova: '#BDBDBD', rex: '#969696', otto: '#DBDBDB' },
   dayPhase: { morning: '#7A7A7A', evening: '#9E9E9E' },
   statusBar: 'light',
 };
@@ -332,7 +332,7 @@ const emberLight: ThemeColors = {
   spark: '#F08C00',
   highlight: '#FCE9D4',
   ramp: RAMP_LIGHT,
-  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#845EF7' },
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#845EF7', nova: '#F03E3E', rex: '#0CA678', otto: '#5C7CFA' },
   dayPhase: { morning: '#FFC078', evening: '#9775FA' },
   statusBar: 'dark',
 };
@@ -353,7 +353,7 @@ const emberDark: ThemeColors = {
   spark: '#FFC94D',
   highlight: '#4A3115',
   ramp: RAMP_DARK,
-  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#B197FC' },
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#B197FC', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
   dayPhase: { morning: '#C08A3E', evening: '#7048E8' },
   statusBar: 'light',
 };
@@ -376,7 +376,7 @@ const meadowLight: ThemeColors = {
   spark: '#F08C00',
   highlight: '#E4F3D7',
   ramp: RAMP_LIGHT,
-  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#1971C2' },
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#1971C2', nova: '#F03E3E', rex: '#099268', otto: '#5C7CFA' },
   dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
   statusBar: 'dark',
 };
@@ -397,7 +397,7 @@ const meadowDark: ThemeColors = {
   spark: '#FFC94D',
   highlight: '#2C4020',
   ramp: RAMP_DARK,
-  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#74C0FC' },
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#74C0FC', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
   dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
   statusBar: 'light',
 };
@@ -420,7 +420,7 @@ const duskLight: ThemeColors = {
   spark: '#F08C00',
   highlight: '#F1E4FA',
   ramp: RAMP_LIGHT,
-  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#AE3EC9', unit7: '#6741D9' },
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#AE3EC9', unit7: '#6741D9', nova: '#F03E3E', rex: '#0CA678', otto: '#5C7CFA' },
   dayPhase: { morning: '#FFC078', evening: '#9775FA' },
   statusBar: 'dark',
 };
@@ -441,7 +441,7 @@ const duskDark: ThemeColors = {
   spark: '#FFC94D',
   highlight: '#3A2A4E',
   ramp: RAMP_DARK,
-  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#E599F7', unit7: '#9775FA' },
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#E599F7', unit7: '#9775FA', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
   dayPhase: { morning: '#B4713D', evening: '#7048E8' },
   statusBar: 'light',
 };
@@ -464,7 +464,7 @@ const circuitLight: ThemeColors = {
   spark: '#F08C00',
   highlight: '#D9F1F7',
   ramp: RAMP_LIGHT,
-  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#0C8599' },
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#0C8599', nova: '#F03E3E', rex: '#099268', otto: '#4C6EF5' },
   dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
   statusBar: 'dark',
 };
@@ -485,8 +485,140 @@ const circuitDark: ThemeColors = {
   spark: '#FFD43B',
   highlight: '#173A45',
   ramp: RAMP_DARK,
-  companion: { wisp: '#FFD43B', pip: '#A9E34B', juno: '#F06BA8', unit7: '#66D9E8' },
+  companion: { wisp: '#FFD43B', pip: '#A9E34B', juno: '#F06BA8', unit7: '#66D9E8', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
   dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
+  statusBar: 'light',
+};
+
+// Rocket — Nova's comic panel: bold cherry red and hero gold.
+
+const rocketLight: ThemeColors = {
+  bg: '#FFF5F5',
+  card: '#FFFFFF',
+  border: '#F6D5D5',
+  text: '#3B1519',
+  textMuted: '#9A6168',
+  primary: '#F03E3E',
+  primaryText: '#FFFFFF',
+  danger: '#C92A2A',
+  overdue: '#C92A2A',
+  today: '#E8590C',
+  upcoming: '#4263EB',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#FDE3E3',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#845EF7', nova: '#F03E3E', rex: '#0CA678', otto: '#5C7CFA' },
+  dayPhase: { morning: '#FFC078', evening: '#9775FA' },
+  statusBar: 'dark',
+};
+
+const rocketDark: ThemeColors = {
+  bg: '#2A0F12',
+  card: '#371A1D',
+  border: '#57292E',
+  text: '#FAE9EA',
+  textMuted: '#D09298',
+  primary: '#FF8787',
+  primaryText: '#380B0E',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FF922B',
+  upcoming: '#748FFC',
+  done: '#51CF66',
+  spark: '#FFC94D',
+  highlight: '#4E2226',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#B197FC', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
+  dayPhase: { morning: '#C08A3E', evening: '#7048E8' },
+  statusBar: 'light',
+};
+
+// Lagoon — Rex's splash pool: fresh teal and sea-glass green.
+
+const lagoonLight: ThemeColors = {
+  bg: '#EFFAF6',
+  card: '#FFFFFF',
+  border: '#CFE9DE',
+  text: '#14342A',
+  textMuted: '#55806F',
+  primary: '#099268',
+  primaryText: '#FFFFFF',
+  danger: '#E03131',
+  overdue: '#E03131',
+  today: '#E8590C',
+  upcoming: '#1971C2',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#D8F3E7',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#1971C2', nova: '#F03E3E', rex: '#099268', otto: '#5C7CFA' },
+  dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
+  statusBar: 'dark',
+};
+
+const lagoonDark: ThemeColors = {
+  bg: '#0B1E18',
+  card: '#142A22',
+  border: '#24443A',
+  text: '#E3F4EC',
+  textMuted: '#93BCAA',
+  primary: '#38D9A9',
+  primaryText: '#04291D',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FFA94D',
+  upcoming: '#74C0FC',
+  done: '#69DB7C',
+  spark: '#FFC94D',
+  highlight: '#1C4235',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#74C0FC', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
+  dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
+  statusBar: 'light',
+};
+
+// Nocturne — Otto's study nook: deep indigo and moonlight gold.
+
+const nocturneLight: ThemeColors = {
+  bg: '#F4F5FC',
+  card: '#FFFFFF',
+  border: '#DCDFF2',
+  text: '#1E2145',
+  textMuted: '#6A6F99',
+  primary: '#4263EB',
+  primaryText: '#FFFFFF',
+  danger: '#E03131',
+  overdue: '#E03131',
+  today: '#E8590C',
+  upcoming: '#7048E8',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#E4E8FB',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#0C8599', nova: '#F03E3E', rex: '#0CA678', otto: '#4C6EF5' },
+  dayPhase: { morning: '#FFC078', evening: '#9775FA' },
+  statusBar: 'dark',
+};
+
+const nocturneDark: ThemeColors = {
+  bg: '#12142B',
+  card: '#1B1E3A',
+  border: '#2E3258',
+  text: '#EBEDFA',
+  textMuted: '#A2A8D4',
+  primary: '#91A7FF',
+  primaryText: '#0D103A',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FF922B',
+  upcoming: '#9775FA',
+  done: '#51CF66',
+  spark: '#FFD43B',
+  highlight: '#262B58',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFD43B', pip: '#A9E34B', juno: '#F06BA8', unit7: '#66D9E8', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
+  dayPhase: { morning: '#A67C4A', evening: '#7048E8' },
   statusBar: 'light',
 };
 
@@ -501,6 +633,9 @@ export const PALETTES: Record<ThemeId, ThemePalette> = {
   meadow: { light: meadowLight, dark: meadowDark },
   dusk: { light: duskLight, dark: duskDark },
   circuit: { light: circuitLight, dark: circuitDark },
+  rocket: { light: rocketLight, dark: rocketDark },
+  lagoon: { light: lagoonLight, dark: lagoonDark },
+  nocturne: { light: nocturneLight, dark: nocturneDark },
 };
 
 /**
@@ -513,5 +648,8 @@ export const COMPANION_THEME: Record<CompanionId, ThemeId> = {
   pip: 'meadow',
   juno: 'dusk',
   unit7: 'circuit',
+  nova: 'rocket',
+  rex: 'lagoon',
+  otto: 'nocturne',
   none: 'slate',
 };

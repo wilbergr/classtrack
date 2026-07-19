@@ -64,6 +64,9 @@ const COMPANION_OPTIONS: { id: CompanionId; label: string }[] = [
   { id: 'pip', label: 'Pip' },
   { id: 'juno', label: 'Juno' },
   { id: 'unit7', label: 'Unit-7' },
+  { id: 'nova', label: 'Nova' },
+  { id: 'rex', label: 'Rex' },
+  { id: 'otto', label: 'Otto' },
   { id: 'none', label: 'None' },
 ];
 
