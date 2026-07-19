@@ -29,7 +29,12 @@ Keyboard handling on form screens (see `AssignmentEditScreen`): `KeyboardAvoidin
 under a native-stack header) and `undefined` on Android, where the window already resizes
 (`softwareKeyboardLayoutMode` defaults to `resize`; padding there would double-compensate).
 Neither platform auto-scrolls a bottom-of-form input into the shrunken viewport — scroll it
-into view explicitly on focus/`keyboardDidShow`.
+into view explicitly on focus/`keyboardDidShow`, deferred one frame (`requestAnimationFrame`:
+`keyboardDidShow` can fire before the resized layout lands, under-scrolling). Growable
+multiline inputs need two more things: re-scroll on `onContentSizeChange` (the caret drifts
+below the keyboard as the field grows while typing — focus/didShow only cover the initial
+moment) and a `maxHeight` so a long value scrolls internally instead of outgrowing the
+shrunken viewport.
 
 # Spark (gamification) — Layer 1.5
 

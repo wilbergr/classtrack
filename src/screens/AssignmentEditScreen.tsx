@@ -68,7 +68,10 @@ export default function AssignmentEditScreen({
   // Notes sits at the bottom of the form; neither platform scrolls it into view on its own
   // once the keyboard shrinks the viewport (Android resize / iOS KeyboardAvoidingView padding).
   const scrollNotesIntoView = useCallback(() => {
-    if (notesFocused.current) scrollRef.current?.scrollToEnd({ animated: true });
+    if (!notesFocused.current) return;
+    // Defer a frame: keyboardDidShow can fire before the resized layout lands, and
+    // scrollToEnd measured against the stale full-height layout under-scrolls.
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   }, []);
 
   useEffect(() => {
@@ -258,6 +261,10 @@ export default function AssignmentEditScreen({
           style={[styles.input, styles.notesInput]}
           multiline
           maxLength={2000}
+          // The field grows as the user types; keep following it or the caret
+          // drifts below the keyboard (focus/keyboardDidShow alone only cover
+          // the initial moment, not growth while typing).
+          onContentSizeChange={scrollNotesIntoView}
           onFocus={() => {
             notesFocused.current = true;
             scrollNotesIntoView(); // keyboard may already be up (focus moved from another field)
@@ -314,7 +321,9 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.card,
   },
-  notesInput: { minHeight: 88, textAlignVertical: 'top' },
+  // maxHeight caps growth so a long note never outgrows the keyboard-shrunken
+  // viewport; past it the input scrolls internally, which keeps the caret visible.
+  notesInput: { minHeight: 88, maxHeight: 180, textAlignVertical: 'top' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     flexDirection: 'row',
