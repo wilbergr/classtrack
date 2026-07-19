@@ -16,20 +16,22 @@ export interface ShopItem {
   celebration?: CelebrationStyle;
 }
 
+const THEME_DESCRIPTIONS: Partial<Record<ThemeId, string>> = {
+  midnight: 'True dark, low glare',
+  neon: 'Saturated color on black',
+  paper: 'Warm, bookish off-white',
+  mono: 'Near-monochrome minimal',
+  ocean: 'Deep-sea blues, calm waters',
+  aurora: 'Northern lights on the night sky',
+};
+
 export const SHOP_ITEMS: ShopItem[] = [
   ...THEME_META.filter((t) => !t.free).map(
     (t): ShopItem => ({
       key: `theme:${t.id}`,
       kind: 'theme',
       label: `${t.label} theme`,
-      description:
-        t.id === 'midnight'
-          ? 'True dark, low glare'
-          : t.id === 'neon'
-            ? 'Saturated color on black'
-            : t.id === 'paper'
-              ? 'Warm, bookish off-white'
-              : 'Near-monochrome minimal',
+      description: THEME_DESCRIPTIONS[t.id] ?? 'A fresh look for the whole app',
       cost: t.cost,
       themeId: t.id,
     }),
@@ -49,11 +51,32 @@ export const SHOP_ITEMS: ShopItem[] = [
     cost: 80,
   },
   {
+    key: 'acc:bell',
+    kind: 'accessory',
+    label: 'Bell collar',
+    description: 'A tiny jingle wherever they go',
+    cost: 80,
+  },
+  {
+    key: 'acc:flower',
+    kind: 'accessory',
+    label: 'Flower',
+    description: 'A little bloom tucked behind the ear',
+    cost: 90,
+  },
+  {
     key: 'acc:halo',
     kind: 'accessory',
     label: 'Halo',
     description: 'For certified good influences',
     cost: 120,
+  },
+  {
+    key: 'acc:crown',
+    kind: 'accessory',
+    label: 'Crown',
+    description: 'Royalty, obviously',
+    cost: 150,
   },
   {
     key: 'celebrate:glow',
@@ -70,6 +93,22 @@ export const SHOP_ITEMS: ShopItem[] = [
     description: 'Expanding shockwave rings',
     cost: 100,
     celebration: 'rings',
+  },
+  {
+    key: 'celebrate:fireflies',
+    kind: 'celebration',
+    label: 'Firefly level-ups',
+    description: 'A drift of twinkling lights',
+    cost: 100,
+    celebration: 'fireflies',
+  },
+  {
+    key: 'celebrate:confetti',
+    kind: 'celebration',
+    label: 'Confetti level-ups',
+    description: 'A flurry of falling confetti',
+    cost: 120,
+    celebration: 'confetti',
   },
 ];
 

@@ -84,6 +84,8 @@ export type ThemeId =
   | 'neon'
   | 'paper'
   | 'mono'
+  | 'ocean'
+  | 'aurora'
   | 'ember'
   | 'meadow'
   | 'dusk'
@@ -94,7 +96,7 @@ export type ThemeId =
  */
 export type ThemeSource = 'companion' | 'manual';
 /** How level-ups celebrate (shop-unlockable beyond 'burst'). */
-export type CelebrationStyle = 'burst' | 'glow' | 'rings';
+export type CelebrationStyle = 'burst' | 'glow' | 'rings' | 'fireflies' | 'confetti';
 
 export interface AppSettings {
   vibe: Vibe;

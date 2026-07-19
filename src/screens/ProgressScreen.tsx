@@ -6,11 +6,12 @@
 // numbers-and-shop peek behind the Spark pill.
 
 import { useFocusEffect } from '@react-navigation/native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import EvolutionMoment from '../components/EvolutionMoment';
+import SparkPill from '../components/SparkPill';
 import SparkShop from '../components/SparkShop';
 import { stageForLevel, STAGE_NAMES, type CompanionStage } from '../gamification/companion';
 import {
@@ -32,7 +33,7 @@ const RING_STROKE = 10;
 const RING_R = (RING_SIZE - RING_STROKE) / 2;
 const RING_C = 2 * Math.PI * RING_R;
 
-export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>) {
+export default function ProgressScreen({ navigation }: RootStackScreenProps<'Progress'>) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
@@ -53,6 +54,12 @@ export default function ProgressScreen(_props: RootStackScreenProps<'Progress'>)
       return onProgressChanged(load);
     }, [load]),
   );
+
+  // Keep the Spark balance in sight while browsing the shop below the fold —
+  // the pill self-refreshes on progress events, including purchases.
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerRight: () => <SparkPill /> });
+  }, [navigation]);
 
   if (!progress) return <View style={styles.container} />;
 

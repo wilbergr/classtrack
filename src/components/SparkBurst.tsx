@@ -120,6 +120,8 @@ function Celebration({ style, color }: { style: CelebrationStyle; color: string 
       </>
     );
   }
+  if (style === 'fireflies') return <Fireflies color={color} />;
+  if (style === 'confetti') return <Confetti />;
   return <Particles color={color} />;
 }
 
@@ -166,6 +168,86 @@ function Glow({ color }: { color: string }) {
   return <Animated.View style={[particleStyles.glow, { backgroundColor: color }, style]} />;
 }
 
+// Static drift spots so every level-up twinkles the same gentle way.
+const FIREFLY_SPOTS: Array<{ x: number; y: number; delay: number }> = [
+  { x: -52, y: -18, delay: 0 },
+  { x: 44, y: -34, delay: 140 },
+  { x: -22, y: 26, delay: 280 },
+  { x: 58, y: 12, delay: 90 },
+  { x: -60, y: -44, delay: 380 },
+  { x: 18, y: -52, delay: 220 },
+  { x: 34, y: 34, delay: 460 },
+];
+
+function Fireflies({ color }: { color: string }) {
+  return (
+    <>
+      {FIREFLY_SPOTS.map((spot, i) => (
+        <Firefly key={i} {...spot} color={color} />
+      ))}
+    </>
+  );
+}
+
+function Firefly({ x, y, delay, color }: { x: number; y: number; delay: number; color: string }) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: 620, easing: Easing.inOut(Easing.quad) }), 3, true),
+    );
+  }, [t, delay]);
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.9 * t.value,
+    transform: [{ translateX: x }, { translateY: y - 10 * t.value }, { scale: 0.6 + 0.4 * t.value }],
+  }));
+  return <Animated.View style={[particleStyles.firefly, { backgroundColor: color }, style]} />;
+}
+
+const CONFETTI_PIECES = Array.from({ length: 12 }, (_, i) => ({
+  x: -66 + (i * 132) / 11,
+  delay: (i % 4) * 90,
+  spin: i % 2 === 0 ? 1 : -1,
+}));
+
+function Confetti() {
+  const { colors } = useTheme();
+  const pieceColors = [colors.spark, colors.primary, colors.upcoming, colors.done];
+  return (
+    <>
+      {CONFETTI_PIECES.map((piece, i) => (
+        <ConfettiPiece key={i} {...piece} color={pieceColors[i % pieceColors.length]} />
+      ))}
+    </>
+  );
+}
+
+function ConfettiPiece({
+  x,
+  delay,
+  spin,
+  color,
+}: {
+  x: number;
+  delay: number;
+  spin: number;
+  color: string;
+}) {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withDelay(delay, withTiming(1, { duration: 1100, easing: Easing.in(Easing.quad) }));
+  }, [t, delay]);
+  const style = useAnimatedStyle(() => ({
+    opacity: 1 - t.value,
+    transform: [
+      { translateX: x + spin * 14 * t.value },
+      { translateY: -70 + 130 * t.value },
+      { rotate: `${spin * 300 * t.value}deg` },
+    ],
+  }));
+  return <Animated.View style={[particleStyles.confetti, { backgroundColor: color }, style]} />;
+}
+
 function Ring({ color, delay }: { color: string; delay: number }) {
   const t = useSharedValue(0);
   useEffect(() => {
@@ -182,6 +264,8 @@ const particleStyles = StyleSheet.create({
   particle: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
   glow: { position: 'absolute', width: 120, height: 120, borderRadius: 60 },
   ring: { position: 'absolute', width: 90, height: 90, borderRadius: 45, borderWidth: 3 },
+  firefly: { position: 'absolute', width: 6, height: 6, borderRadius: 3 },
+  confetti: { position: 'absolute', width: 6, height: 10, borderRadius: 2 },
 });
 
 const makeStyles = (colors: ThemeColors) =>

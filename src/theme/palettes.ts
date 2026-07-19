@@ -310,6 +310,79 @@ const monoDark: ThemeColors = {
   statusBar: 'light',
 };
 
+// ---------- Ocean: deep-sea blues, airy in light mode ----------
+
+const oceanLight: ThemeColors = {
+  bg: '#F0F6FB',
+  card: '#FFFFFF',
+  border: '#D6E4F0',
+  text: '#122436',
+  textMuted: '#54718C',
+  primary: '#1864AB',
+  primaryText: '#FFFFFF',
+  danger: '#E03131',
+  overdue: '#E03131',
+  today: '#E8590C',
+  upcoming: '#0B7285',
+  done: '#2F9E44',
+  spark: '#F08C00',
+  highlight: '#DBEBFA',
+  ramp: RAMP_LIGHT,
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#1971C2' },
+  dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
+  statusBar: 'dark',
+};
+
+const oceanDark: ThemeColors = {
+  bg: '#0B1620',
+  card: '#132330',
+  border: '#24384A',
+  text: '#E3EEF7',
+  textMuted: '#8FA9C0',
+  primary: '#4DABF7',
+  primaryText: '#04223B',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FFA94D',
+  upcoming: '#66D9E8',
+  done: '#51CF66',
+  spark: '#FFC94D',
+  highlight: '#173349',
+  ramp: RAMP_DARK,
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#66D9E8' },
+  dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
+  statusBar: 'light',
+};
+
+// ---------- Aurora: northern-lights teal and violet on near-black (dark in both modes) ----------
+
+const aurora: ThemeColors = {
+  bg: '#0A1210',
+  card: '#12201C',
+  border: '#23392F',
+  text: '#E5F3EC',
+  textMuted: '#8FB3A4',
+  primary: '#2BD9A8',
+  primaryText: '#04231A',
+  danger: '#FF6B6B',
+  overdue: '#FF6B6B',
+  today: '#FFA94D',
+  upcoming: '#9775FA',
+  done: '#51CF66',
+  spark: '#63E6BE',
+  highlight: '#16382C',
+  ramp: {
+    safe: '#9775FA',
+    soon: '#38D9A9',
+    tomorrow: '#FFC078',
+    today: '#FF922B',
+    overdue: '#FF6B6B',
+  },
+  companion: { wisp: '#FFD43B', pip: '#69DB7C', juno: '#DA77F2', unit7: '#66D9E8' },
+  dayPhase: { morning: '#8A6B3D', evening: '#9775FA' },
+  statusBar: 'light',
+};
+
 // ---------- Companion signature palettes ----------
 // One per companion: choosing a sidekick dresses the whole app in its look
 // (the default `themeSource`). "None" keeps the quiet Slate palette.
@@ -497,6 +570,8 @@ export const PALETTES: Record<ThemeId, ThemePalette> = {
   neon: { light: neon, dark: neon },
   paper: { light: paperLight, dark: paperDark },
   mono: { light: monoLight, dark: monoDark },
+  ocean: { light: oceanLight, dark: oceanDark },
+  aurora: { light: aurora, dark: aurora },
   ember: { light: emberLight, dark: emberDark },
   meadow: { light: meadowLight, dark: meadowDark },
   dusk: { light: duskLight, dark: duskDark },

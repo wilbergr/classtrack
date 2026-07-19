@@ -310,6 +310,35 @@ function accessoryLayer(keys: string[], c: ThemeColors): RigLayer | null {
       { kind: 'circle', cx: 50, cy: 59, r: 3, fill: c.primary },
     );
   }
+  if (keys.includes('bell')) {
+    shapes.push(
+      { kind: 'path', d: 'M 36 55 Q 50 61 64 55 L 64 59 Q 50 65 36 59 Z', fill: c.upcoming },
+      { kind: 'circle', cx: 50, cy: 62.5, r: 3.5, fill: c.spark },
+      { kind: 'circle', cx: 50, cy: 64.5, r: 1, fill: c.text },
+    );
+  }
+  if (keys.includes('flower')) {
+    // Five petals around a spark-colored center, tucked at the head's side.
+    const petals: Array<[number, number]> = [
+      [68, 9.6],
+      [72.2, 12.6],
+      [70.6, 17.6],
+      [65.4, 17.6],
+      [63.8, 12.6],
+    ];
+    shapes.push(
+      ...petals.map(
+        ([cx, cy]): RigShape => ({ kind: 'circle', cx, cy, r: 2.6, fill: c.primary }),
+      ),
+      { kind: 'circle', cx: 68, cy: 13.6, r: 2.2, fill: c.spark },
+    );
+  }
+  if (keys.includes('crown')) {
+    shapes.push(
+      { kind: 'path', d: 'M 40 12 L 40 4 L 45 8 L 50 3 L 55 8 L 60 4 L 60 12 Z', fill: c.spark },
+      { kind: 'circle', cx: 50, cy: 10, r: 1.4, fill: c.primary },
+    );
+  }
   if (shapes.length === 0) return null;
   return { id: 'accessory', shapes, breathAmp: 0.02, breathPhase: 0.05 };
 }
