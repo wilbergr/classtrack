@@ -5,18 +5,27 @@ import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 
 interface Props {
   emoji?: string;
+  /** Custom icon slot; replaces the emoji when provided (owns its own bottom spacing). */
+  renderIcon?: () => React.ReactNode;
   title: string;
   message?: string;
   actionLabel?: string;
   onAction?: () => void;
 }
 
-export default function EmptyState({ emoji = '🎒', title, message, actionLabel, onAction }: Props) {
+export default function EmptyState({
+  emoji = '🎒',
+  renderIcon,
+  title,
+  message,
+  actionLabel,
+  onAction,
+}: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   return (
     <View style={styles.container}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      {renderIcon ? renderIcon() : <Text style={styles.emoji}>{emoji}</Text>}
       <Text style={styles.title}>{title}</Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
       {actionLabel && onAction ? (
