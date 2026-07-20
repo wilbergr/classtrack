@@ -9,7 +9,7 @@ import HorizonStrip from '../components/HorizonStrip';
 import QuickAddSheet from '../components/QuickAddSheet';
 import SparkPill from '../components/SparkPill';
 import { listOpenAssignmentsWithSubject, listSubjects, setAssignmentCompleted } from '../db/database';
-import { addDays, dueStatus, startOfDay } from '../dates';
+import { bucketByDueStatus, startOfDay } from '../dates';
 import { awardCompleteAsync } from '../gamification/engine';
 import { onSpark } from '../gamification/events';
 import { useCalmMotion } from '../hooks';
@@ -66,15 +66,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
       listOpenAssignmentsWithSubject(),
       listSubjects(),
     ]);
-    const overdue: AssignmentWithSubject[] = [];
-    const today: AssignmentWithSubject[] = [];
-    const upcoming: AssignmentWithSubject[] = [];
-    for (const a of assignments) {
-      const s = dueStatus(a);
-      if (s === 'overdue') overdue.push(a);
-      else if (s === 'today') today.push(a);
-      else upcoming.push(a);
-    }
+    const { overdue, today, upcoming } = bucketByDueStatus(assignments);
     setSections(
       [
         { title: 'Overdue', color: colors.overdue, data: overdue },

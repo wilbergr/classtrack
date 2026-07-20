@@ -19,18 +19,19 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import Companion, { EnergyMeter, EnergyOrb } from '../components/Companion';
+import Companion, { EnergyOrb } from '../components/Companion';
 import EvolutionMoment from '../components/EvolutionMoment';
+import FocusPreview from '../components/FocusPreview';
 import QuickAddSheet from '../components/QuickAddSheet';
+import Scenery from '../components/scenery/Scenery';
+import type { DayPhase } from '../components/scenery/model';
 import SparkPill from '../components/SparkPill';
 import SpeechBubble from '../components/SpeechBubble';
 import { listOpenAssignmentsWithSubject, listSubjects } from '../db/database';
-import { startOfDay } from '../dates';
+import { bucketByDueStatus, startOfDay } from '../dates';
 import { deriveMood, stageForLevel, type CompanionStage } from '../gamification/companion';
 import {
   getProgressSummaryAsync,
@@ -54,8 +55,8 @@ import { useCalmMotion, useSettings } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import { getSettingAsync, setSettingAsync } from '../settings';
 import { mix } from '../components/companion/color';
-import { radius, spacing, useTheme, type ThemeColors } from '../theme';
-import type { AssignmentWithSubject, VoicePackId } from '../types';
+import { COMPANION_THEME, radius, spacing, useTheme, type ThemeColors } from '../theme';
+import type { AssignmentWithSubject, ThemeId, VoicePackId } from '../types';
 
 /** Settings key: startOfDay of the last Home greeting (one greeting per day). */
 const LAST_GREET_KEY = 'lastHomeGreetDay';
@@ -74,7 +75,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const settings = useSettings();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const [assignments, setAssignments] = useState<AssignmentWithSubject[]>([]);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
@@ -110,6 +111,8 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
     () => dayCounts(assignments, Date.now()),
     [assignments],
   );
+  // Live buckets for the Home focus preview — same source of truth as Today.
+  const buckets = useMemo(() => bucketByDueStatus(assignments), [assignments]);
 
   const mood = progress
     ? deriveMood({
@@ -310,31 +313,29 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
   // The companion is the star of the screen — it grew when the name/stage
   // label moved into its own speech bubble (the 'identity' line). Renaming
   // lives in Settings → Sidekick.
-  const companionSize = Math.min(320, Math.max(240, Math.round(width * 0.72)));
+  // Still the star of the screen, but also bounded by height so the focus
+  // preview card below never pushes content off a short screen.
+  const companionSize = Math.min(300, Math.max(200, Math.round(Math.min(width * 0.66, height * 0.32))));
   const tint = species === null ? colors.primary : colors.companion[species];
-  // Day-phase tinting: the ambient glow leans warm in the morning and cool
-  // in the evening (decorative only — recomputed on each visit).
+  // Day-phase tinting: the scene + focal glow lean warm in the morning and
+  // cool in the evening (decorative only — recomputed on each visit).
   const hour = new Date().getHours();
+  const dayPhase: DayPhase =
+    hour >= 5 && hour < 11 ? 'morning' : hour >= 17 || hour < 5 ? 'evening' : 'day';
   const glowTint =
-    hour >= 5 && hour < 11
+    dayPhase === 'morning'
       ? mix(tint, colors.dayPhase.morning, 0.4)
-      : hour >= 17 || hour < 5
+      : dayPhase === 'evening'
         ? mix(tint, colors.dayPhase.evening, 0.4)
         : tint;
-
-  const dayLabel =
-    counts.dueToday === 0 && counts.dueTomorrow === 0
-      ? 'Nothing due today'
-      : [
-          counts.dueToday > 0 ? `${counts.dueToday} due today` : null,
-          counts.dueTomorrow > 0 ? `${counts.dueTomorrow} tomorrow` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ');
+  // The active palette id drives which room scene shows (companion-first,
+  // mirroring ThemeProvider's resolution).
+  const themeId: ThemeId =
+    settings.themeSource === 'manual' ? settings.themeId : COMPANION_THEME[settings.companion];
 
   return (
     <View style={styles.container}>
-      <AmbientBackground tint={glowTint} />
+      <Scenery themeId={themeId} dayPhase={dayPhase} glowTint={glowTint} />
       <View style={styles.stage}>
         <View style={styles.bubbleSlot}>
           {current && <SpeechBubble text={current.text} onPress={advance} plain={isNone} />}
@@ -375,30 +376,16 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
           <Text style={styles.nameText}>Level {lp.level}</Text>
         )}
 
-        <Pressable
-          onPress={() => navigation.navigate('Today')}
-          style={({ pressed }) => [styles.dayCard, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={`${dayLabel}. Opens Today.`}
-        >
-          <View style={styles.dayCardRow}>
-            <View style={styles.dayDots}>
-              {counts.dueToday > 0 && (
-                <View style={[styles.dot, { backgroundColor: colors.ramp.today }]} />
-              )}
-              {counts.dueTomorrow > 0 && (
-                <View style={[styles.dot, { backgroundColor: colors.ramp.tomorrow }]} />
-              )}
-              {counts.dueToday === 0 && counts.dueTomorrow === 0 && (
-                <View style={[styles.dot, { backgroundColor: colors.done }]} />
-              )}
-            </View>
-            <Text style={styles.dayText}>{dayLabel}</Text>
-            <Text style={styles.dayChevron}>›</Text>
-          </View>
-          {/* Soft glance at the next form — never a countdown. */}
-          {lp && <EnergyMeter fraction={lp.fraction} width={180} height={4} />}
-        </Pressable>
+        {/* Condensed glance at what's live, tap-through to the full Today
+            tab. Additive: Today owns the complete list and completion. */}
+        <FocusPreview
+          overdue={buckets.overdue}
+          today={buckets.today}
+          tomorrowCount={counts.dueTomorrow}
+          levelFraction={lp?.fraction ?? null}
+          onOpenToday={() => navigation.navigate('Today')}
+          onOpenAssignment={(id) => navigation.navigate('AssignmentEdit', { assignmentId: id })}
+        />
 
         <View style={styles.actionRow}>
           <Pressable
@@ -442,28 +429,6 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
           onClose={closeEvolution}
         />
       )}
-    </View>
-  );
-}
-
-/**
- * Full-bleed radial glow in the companion's tint plus a few soft shapes on a
- * slow parallax drift (wrapper transforms only; static under calm motion).
- */
-function AmbientBackground({ tint }: { tint: string }) {
-  const calm = useCalmMotion();
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-        <Defs>
-          <RadialGradient id="homeGlow" cx="50%" cy="28%" r="75%">
-            <Stop offset="0" stopColor={tint} stopOpacity={0.22} />
-            <Stop offset="1" stopColor={tint} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-        <Rect x={0} y={0} width="100%" height="100%" fill="url(#homeGlow)" />
-      </Svg>
-      {!calm && DRIFT_SPECS.map((d, i) => <DriftShape key={i} spec={d} tint={tint} />)}
     </View>
   );
 }
@@ -530,55 +495,6 @@ function FeedMote({
   );
 }
 
-interface DriftSpec {
-  left: `${number}%`;
-  top: `${number}%`;
-  size: number;
-  durationMs: number;
-  dx: number;
-  dy: number;
-  opacity: number;
-}
-
-const DRIFT_SPECS: DriftSpec[] = [
-  { left: '8%', top: '12%', size: 90, durationMs: 11000, dx: 16, dy: 12, opacity: 0.08 },
-  { left: '70%', top: '8%', size: 60, durationMs: 9000, dx: -14, dy: 16, opacity: 0.1 },
-  { left: '78%', top: '46%', size: 110, durationMs: 13000, dx: -18, dy: -10, opacity: 0.06 },
-  { left: '4%', top: '58%', size: 70, durationMs: 10000, dx: 14, dy: -14, opacity: 0.08 },
-];
-
-function DriftShape({ spec, tint }: { spec: DriftSpec; tint: string }) {
-  const t = useSharedValue(0);
-  useEffect(() => {
-    t.value = withRepeat(
-      withTiming(1, { duration: spec.durationMs, easing: Easing.inOut(Easing.quad) }),
-      -1,
-      true,
-    );
-    return () => cancelAnimation(t);
-  }, [t, spec.durationMs]);
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: spec.dx * t.value }, { translateY: spec.dy * t.value }],
-  }));
-  return (
-    <Animated.View
-      style={[
-        {
-          position: 'absolute',
-          left: spec.left,
-          top: spec.top,
-          width: spec.size,
-          height: spec.size,
-          borderRadius: spec.size / 2,
-          backgroundColor: tint,
-          opacity: spec.opacity,
-        },
-        style,
-      ]}
-    />
-  );
-}
-
 const makeStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
@@ -592,23 +508,6 @@ const makeStyles = (colors: ThemeColors) =>
     bubbleSlot: { minHeight: 84, justifyContent: 'flex-end', marginBottom: spacing.sm },
     companionPress: { alignItems: 'center', justifyContent: 'center', minWidth: 48, minHeight: 48 },
     nameText: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: spacing.xs },
-    dayCard: {
-      alignItems: 'center',
-      gap: spacing.sm,
-      marginTop: spacing.xl,
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: radius.md,
-      paddingVertical: spacing.md,
-      paddingHorizontal: spacing.lg,
-      minHeight: 48,
-    },
-    dayCardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-    dayDots: { flexDirection: 'row', gap: 4 },
-    dot: { width: 8, height: 8, borderRadius: 4 },
-    dayText: { color: colors.text, fontSize: 15, fontWeight: '600' },
-    dayChevron: { color: colors.textMuted, fontSize: 18, fontWeight: '600', marginLeft: spacing.xs },
     actionRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
     actionButton: {
       borderRadius: radius.md,
