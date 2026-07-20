@@ -354,6 +354,7 @@ export default function HomeScreen({ navigation }: TabScreenProps<'Home'>) {
               size={companionSize}
               accessories={settings.accessories}
               pokeSignal={pokeCount}
+              shields={progress?.grace ?? 0}
             />
             {feeding && !calm && <FeedMotes key={feedSeq} size={companionSize} tint={tint} />}
           </Pressable>
