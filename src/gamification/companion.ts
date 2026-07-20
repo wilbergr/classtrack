@@ -8,14 +8,21 @@ import type { Progress } from '../types';
 
 export type CompanionMood = 'bright' | 'alert' | 'dozing' | 'celebrating';
 
-export type CompanionStage = 1 | 2 | 3 | 4 | 5;
+export type CompanionStage = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+/** The last evolution stage — the single source for "final form" checks. */
+export const TOP_STAGE: CompanionStage = 7;
 
 /**
- * 5 stages on the existing lifetime-Spark level curve. Purely additive
+ * 7 stages on the existing lifetime-Spark level curve. Purely additive
  * detail; driven by `lifetime`, so a form can never be bought or lost.
  * Existing users only ever map upward (old stage 3 = level ≥12 → stage 4).
+ * The level gaps keep widening (2, 2, 4, 5, 6, 7) so each new form takes
+ * longer to earn than the last.
  */
 export function stageForLevel(level: number): CompanionStage {
+  if (level >= 27) return 7;
+  if (level >= 20) return 6;
   if (level >= 14) return 5;
   if (level >= 9) return 4;
   if (level >= 5) return 3;
@@ -29,6 +36,8 @@ export const STAGE_NAMES: Record<CompanionStage, string> = {
   3: 'Grown',
   4: 'Radiant',
   5: 'Luminous',
+  6: 'Celestial',
+  7: 'Mythic',
 };
 
 export interface MoodInputs {
