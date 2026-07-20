@@ -328,7 +328,7 @@ const oceanLight: ThemeColors = {
   spark: '#F08C00',
   highlight: '#DBEBFA',
   ramp: RAMP_LIGHT,
-  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#1971C2' },
+  companion: { wisp: '#F08C00', pip: '#66A80F', juno: '#D6336C', unit7: '#1971C2', nova: '#F03E3E', rex: '#0CA678', otto: '#4263EB' },
   dayPhase: { morning: '#FFD8A8', evening: '#748FFC' },
   statusBar: 'dark',
 };
@@ -349,7 +349,7 @@ const oceanDark: ThemeColors = {
   spark: '#FFC94D',
   highlight: '#173349',
   ramp: RAMP_DARK,
-  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#66D9E8' },
+  companion: { wisp: '#FFC94D', pip: '#A9E34B', juno: '#F06BA8', unit7: '#66D9E8', nova: '#FF8787', rex: '#38D9A9', otto: '#748FFC' },
   dayPhase: { morning: '#A67C4A', evening: '#5C7CFA' },
   statusBar: 'light',
 };
@@ -378,7 +378,7 @@ const aurora: ThemeColors = {
     today: '#FF922B',
     overdue: '#FF6B6B',
   },
-  companion: { wisp: '#FFD43B', pip: '#69DB7C', juno: '#DA77F2', unit7: '#66D9E8' },
+  companion: { wisp: '#FFD43B', pip: '#69DB7C', juno: '#DA77F2', unit7: '#66D9E8', nova: '#FF8787', rex: '#38D9A9', otto: '#91A7FF' },
   dayPhase: { morning: '#8A6B3D', evening: '#9775FA' },
   statusBar: 'light',
 };

@@ -91,7 +91,7 @@ export interface RigModel {
    * the eyes instead (blink arcs, celebrating arcs).
    */
   pupils: { shapes: RigShape[]; range: number } | null;
-  /** Ambient tint motes drift around the companion (stages 4–5). */
+  /** Ambient tint motes drift around the companion (stage 4 and up). */
   motes: boolean;
   /**
    * Hover amplitude in rig units for floaty species (Wisp). Every layer but
@@ -116,7 +116,9 @@ export function stageScale(stage: number): number {
   if (stage <= 1) return 0.78;
   if (stage <= 3) return 1;
   if (stage === 4) return 1.04;
-  return 1.08;
+  if (stage === 5) return 1.08;
+  if (stage === 6) return 1.11;
+  return 1.14;
 }
 
 const WHITE = '#FFFFFF';
@@ -152,17 +154,34 @@ function starPath(cx: number, cy: number, r: number): string {
   );
 }
 
-/** Luminous-stage shimmer: tiny sparkles over the character, gently pulsing. */
-function shimmerLayer(tint: string): RigLayer {
+/**
+ * Luminous-stage shimmer: tiny sparkles over the character, gently pulsing.
+ * The field thickens at Celestial and again at Mythic.
+ */
+function shimmerLayer(tint: string, stage: number): RigLayer {
   const spark = lighten(tint, 0.6);
+  const shapes: RigShape[] = [
+    { kind: 'path', d: starPath(33, 30, 3), fill: spark, opacity: 0.8 },
+    { kind: 'path', d: starPath(68, 24, 2.4), fill: spark, opacity: 0.7 },
+    { kind: 'path', d: starPath(70, 72, 2.8), fill: spark, opacity: 0.75 },
+    { kind: 'path', d: starPath(30, 76, 2.2), fill: spark, opacity: 0.65 },
+  ];
+  if (stage >= 6) {
+    shapes.push(
+      { kind: 'path', d: starPath(23, 49, 2.4), fill: spark, opacity: 0.7 },
+      { kind: 'path', d: starPath(77, 45, 2.2), fill: spark, opacity: 0.7 },
+    );
+  }
+  if (stage >= 7) {
+    shapes.push(
+      { kind: 'path', d: starPath(20, 22, 2), fill: spark, opacity: 0.75 },
+      { kind: 'path', d: starPath(81, 15, 2.2), fill: spark, opacity: 0.75 },
+      { kind: 'path', d: starPath(50, 97, 1.8), fill: spark, opacity: 0.6 },
+    );
+  }
   return {
     id: 'shimmer',
-    shapes: [
-      { kind: 'path', d: starPath(33, 30, 3), fill: spark, opacity: 0.8 },
-      { kind: 'path', d: starPath(68, 24, 2.4), fill: spark, opacity: 0.7 },
-      { kind: 'path', d: starPath(70, 72, 2.8), fill: spark, opacity: 0.75 },
-      { kind: 'path', d: starPath(30, 76, 2.2), fill: spark, opacity: 0.65 },
-    ],
+    shapes,
     breathAmp: 0.022,
     breathPhase: 0,
     pulse: true,
@@ -198,6 +217,8 @@ function auraLayer(tint: string, stage: number): RigLayer {
   });
   const rings = [ring(46, 0.28), ring(41, 0.16), ring(36, 0.09)];
   if (stage >= 5) rings.unshift(ring(50, 0.12));
+  if (stage >= 6) rings.unshift(ring(53, 0.1));
+  if (stage >= 7) rings.unshift(ring(56, 0.07));
   return {
     id: 'aura',
     shapes: rings,
@@ -448,14 +469,29 @@ function wispLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
   const ink = darken(tint, 0.72);
   const layers: RigLayer[] = [];
 
-  // Side flames flank the head from Sprout on.
+  // Side flames flank the head from Sprout on; Celestial grows a taller
+  // outer pair that reads as flame wings, and Mythic sets twin embers
+  // hovering beside the torso.
   if (i.stage >= 2) {
+    const sideFlames: RigShape[] = [
+      { kind: 'path', d: 'M 28 44 C 22 36 24 26 30 20 C 29 30 31 37 36 43 Z', fill: darken(tint, 0.06), opacity: 0.8 },
+      { kind: 'path', d: 'M 72 44 C 78 36 76 26 70 20 C 71 30 69 37 64 43 Z', fill: darken(tint, 0.06), opacity: 0.8 },
+    ];
+    if (i.stage >= 6) {
+      sideFlames.unshift(
+        { kind: 'path', d: 'M 23 50 C 14 40 15 24 25 13 C 22 27 25 40 32 48 Z', fill: lighten(tint, 0.16), opacity: 0.75 },
+        { kind: 'path', d: 'M 77 50 C 86 40 85 24 75 13 C 78 27 75 40 68 48 Z', fill: lighten(tint, 0.16), opacity: 0.75 },
+      );
+    }
+    if (i.stage >= 7) {
+      sideFlames.push(
+        { kind: 'path', d: 'M 15 60 C 18 63 17 67 15 69 C 13 67 12 63 15 60 Z', fill: lighten(tint, 0.3), opacity: 0.9 },
+        { kind: 'path', d: 'M 85 60 C 88 63 87 67 85 69 C 83 67 82 63 85 60 Z', fill: lighten(tint, 0.3), opacity: 0.9 },
+      );
+    }
     layers.push({
       id: 'back',
-      shapes: [
-        { kind: 'path', d: 'M 28 44 C 22 36 24 26 30 20 C 29 30 31 37 36 43 Z', fill: darken(tint, 0.06), opacity: 0.8 },
-        { kind: 'path', d: 'M 72 44 C 78 36 76 26 70 20 C 71 30 69 37 64 43 Z', fill: darken(tint, 0.06), opacity: 0.8 },
-      ],
+      shapes: sideFlames,
       breathAmp: 0.03,
       breathPhase: 0.4,
       sway: 2.5,
@@ -494,21 +530,41 @@ function wispLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
   layers.push({ id: 'body', shapes: bodyShapes, breathAmp: 0.022, breathPhase: 0 });
 
   if (i.stage >= 3) {
+    const markings: RigShape[] = [
+      { kind: 'path', d: 'M 40 63 C 39 67 39 72 40 76', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
+      { kind: 'path', d: 'M 60 63 C 61 67 61 72 60 76', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
+    ];
+    if (i.stage >= 7) {
+      // Mythic burns white-hot: an inner flame glows through the head.
+      markings.unshift({
+        kind: 'path',
+        d: 'M 50 16 C 55 22 60 27 60 34 C 60 42 55 47 50 47 C 45 47 40 42 40 34 C 40 27 45 22 50 16 Z',
+        fill: lighten(tint, 0.5),
+        opacity: 0.45,
+      });
+    }
     layers.push({
       id: 'markings',
-      shapes: [
-        { kind: 'path', d: 'M 40 63 C 39 67 39 72 40 76', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
-        { kind: 'path', d: 'M 60 63 C 61 67 61 72 60 76', stroke: darken(tint, 0.14), strokeWidth: 2.2, strokeLinecap: 'round', fill: 'none', opacity: 0.5 },
-      ],
+      shapes: markings,
       breathAmp: 0.022,
       breathPhase: 0,
     });
   }
 
-  // Tail flame (always) + crown-flame at Radiant; Luminous lights a tongue.
+  // Tail flame (always) + crown-flame at Radiant; Luminous lights a tongue,
+  // Celestial splits the tail into three, Mythic whitens the tail core.
   const front: RigShape[] = [
     { kind: 'path', d: 'M 50 81 C 55 85 53 91 50 94 C 47 91 45 85 50 81 Z', fill: lighten(tint, 0.2), opacity: 0.95 },
   ];
+  if (i.stage >= 6) {
+    front.push(
+      { kind: 'path', d: 'M 42 82 C 45.5 85 44.5 89 42.5 91.5 C 40.5 89 39.5 85 42 82 Z', fill: lighten(tint, 0.2), opacity: 0.85 },
+      { kind: 'path', d: 'M 58 82 C 60.5 85 59.5 89 57.5 91.5 C 55.5 89 54.5 85 58 82 Z', fill: lighten(tint, 0.2), opacity: 0.85 },
+    );
+  }
+  if (i.stage >= 7) {
+    front.push({ kind: 'ellipse', cx: 50, cy: 87, rx: 1.8, ry: 4, fill: lighten(tint, 0.55), opacity: 0.9 });
+  }
   if (i.stage >= 4) {
     front.push({
       kind: 'path',
@@ -520,6 +576,13 @@ function wispLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
     });
     if (i.stage >= 5) {
       front.push({ kind: 'ellipse', cx: 50, cy: 9, rx: 2.4, ry: 4, fill: lighten(tint, 0.55), opacity: 0.9 });
+    }
+    if (i.stage >= 7) {
+      // The crown flame flares into a full plume.
+      front.push(
+        { kind: 'path', d: 'M 42 6 C 44 2.5 47 0.5 50 0 C 47.5 3 46 6.5 45.5 10 Z', fill: lighten(tint, 0.35), opacity: 0.85 },
+        { kind: 'path', d: 'M 58 6 C 56 2.5 53 0.5 50 0 C 52.5 3 54 6.5 54.5 10 Z', fill: lighten(tint, 0.35), opacity: 0.85 },
+      );
     }
   }
   layers.push({
@@ -548,6 +611,30 @@ function pipLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
   const ink = darken(tint, 0.72);
   const layers: RigLayer[] = [];
 
+  // Celestial grows leafy fronds at the shoulders; Mythic frees a few petals
+  // to drift alongside.
+  if (i.stage >= 6) {
+    const fronds: RigShape[] = [
+      { kind: 'path', d: 'M 34 60 C 26 57 21 51 21 43 C 28 46 33 52 35 58 Z', fill: i.colors.done, opacity: 0.9 },
+      { kind: 'path', d: 'M 66 60 C 74 57 79 51 79 43 C 72 46 67 52 65 58 Z', fill: i.colors.done, opacity: 0.9 },
+    ];
+    if (i.stage >= 7) {
+      fronds.push(
+        { kind: 'circle', cx: 25, cy: 33, r: 1.9, fill: lighten(tint, 0.4), opacity: 0.85 },
+        { kind: 'circle', cx: 76, cy: 38, r: 1.6, fill: lighten(tint, 0.4), opacity: 0.85 },
+        { kind: 'circle', cx: 21, cy: 70, r: 1.5, fill: lighten(tint, 0.4), opacity: 0.7 },
+      );
+    }
+    layers.push({
+      id: 'back',
+      shapes: fronds,
+      breathAmp: 0.026,
+      breathPhase: 0.4,
+      sway: 2.5,
+      pivot: { x: 50, y: 58 },
+    });
+  }
+
   if (i.stage >= 2) layers.push(stubbyArms(darken(tint, 0.04), 63, 7));
 
   // Big round head on a round tummy, little feet; the tummy tucks up under
@@ -575,12 +662,24 @@ function pipLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
   layers.push({ id: 'body', shapes: bodyShapes, breathAmp: 0.024, breathPhase: 0 });
 
   if (i.stage >= 3) {
+    const markings: RigShape[] = [
+      { kind: 'circle', cx: 37, cy: 68, r: 3.5, fill: WHITE, opacity: 0.35 },
+      { kind: 'circle', cx: 63, cy: 68, r: 3.5, fill: WHITE, opacity: 0.35 },
+    ];
+    if (i.stage >= 7) {
+      // A little tummy blossom — the garden reaches the body.
+      const petal = lighten(tint, 0.4);
+      markings.push(
+        { kind: 'circle', cx: 50, cy: 69, r: 2, fill: petal },
+        { kind: 'circle', cx: 47.6, cy: 71.8, r: 2, fill: petal },
+        { kind: 'circle', cx: 52.4, cy: 71.8, r: 2, fill: petal },
+        { kind: 'circle', cx: 50, cy: 74.2, r: 2, fill: petal },
+        { kind: 'circle', cx: 50, cy: 71.5, r: 1.6, fill: i.colors.spark },
+      );
+    }
     layers.push({
       id: 'markings',
-      shapes: [
-        { kind: 'circle', cx: 37, cy: 68, r: 3.5, fill: WHITE, opacity: 0.35 },
-        { kind: 'circle', cx: 63, cy: 68, r: 3.5, fill: WHITE, opacity: 0.35 },
-      ],
+      shapes: markings,
       breathAmp: 0.024,
       breathPhase: 0,
     });
@@ -607,6 +706,24 @@ function pipLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
         { kind: 'line', x1: 56, y1: 11, x2: 61, y2: 5, stroke: darken(tint, 0.1), strokeWidth: 2, strokeLinecap: 'round' },
         { kind: 'circle', cx: 62, cy: 3.6, r: 2.6, fill: lighten(tint, 0.35) },
         { kind: 'circle', cx: 62, cy: 3.6, r: 1.4, fill: i.colors.spark },
+      );
+    }
+    if (i.stage >= 6) {
+      // A mirrored bud on the left completes the flower crown.
+      sprout.push(
+        { kind: 'line', x1: 44, y1: 11, x2: 39, y2: 5, stroke: darken(tint, 0.1), strokeWidth: 2, strokeLinecap: 'round' },
+        { kind: 'circle', cx: 38, cy: 3.6, r: 2.6, fill: lighten(tint, 0.35) },
+        { kind: 'circle', cx: 38, cy: 3.6, r: 1.4, fill: i.colors.spark },
+      );
+    }
+    if (i.stage >= 7) {
+      // The center bloom opens wide: an outer ring of pale petals.
+      const outer = lighten(tint, 0.5);
+      sprout.push(
+        { kind: 'circle', cx: 43.8, cy: 3, r: 2.4, fill: outer, opacity: 0.95 },
+        { kind: 'circle', cx: 56.2, cy: 3, r: 2.4, fill: outer, opacity: 0.95 },
+        { kind: 'circle', cx: 50, cy: 0.8, r: 2.4, fill: outer, opacity: 0.95 },
+        { kind: 'circle', cx: 50, cy: 4.8, r: 2.4, fill: i.colors.spark },
       );
     }
     layers.push({
@@ -657,6 +774,22 @@ function junoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
     backShapes.push(
       { kind: 'path', d: starPath(25, 4, 2.4), fill: i.colors.spark, opacity: 0.9 },
       { kind: 'path', d: starPath(75, 4, 2.4), fill: i.colors.spark, opacity: 0.9 },
+    );
+  }
+  if (i.stage >= 6) {
+    // A little gold crescent drifts above the tail tip.
+    backShapes.push({
+      kind: 'path',
+      d: 'M 82 49 A 4.2 4.2 0 1 0 84.9 56.1 A 3.2 3.2 0 1 1 82 49 Z',
+      fill: i.colors.spark,
+      opacity: 0.9,
+    });
+  }
+  if (i.stage >= 7) {
+    // The mythic second tail — a mirrored curl with its own lit tip.
+    backShapes.push(
+      { kind: 'path', d: 'M 36 80 C 24 79 19 70 24 61', stroke: darken(tint, 0.08), strokeWidth: 5, strokeLinecap: 'round', fill: 'none' },
+      { kind: 'circle', cx: 24, cy: 61, r: 3, fill: lighten(tint, 0.35) },
     );
   }
   layers.push({ id: 'back', shapes: backShapes, breathAmp: 0.02, breathPhase: 0.35, sway: 2 });
@@ -718,6 +851,23 @@ function junoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
   if (i.stage >= 5) {
     markings.push({ kind: 'path', d: starPath(50, 26, 2.6), fill: i.colors.spark, opacity: 0.9 });
   }
+  if (i.stage >= 6) {
+    // The collar arcs wider up the shoulders.
+    markings.push(
+      { kind: 'path', d: starPath(34.5, 53.5, 2.2), fill: i.colors.spark, opacity: 0.85 },
+      { kind: 'path', d: starPath(65.5, 53.5, 2.2), fill: i.colors.spark, opacity: 0.85 },
+    );
+  }
+  if (i.stage >= 7) {
+    // A tiny constellation traced on the flank.
+    markings.push(
+      { kind: 'line', x1: 39, y1: 66, x2: 36.5, y2: 72, stroke: i.colors.spark, strokeWidth: 0.8, strokeLinecap: 'round', opacity: 0.5 },
+      { kind: 'line', x1: 36.5, y1: 72, x2: 41.5, y2: 76, stroke: i.colors.spark, strokeWidth: 0.8, strokeLinecap: 'round', opacity: 0.5 },
+      { kind: 'path', d: starPath(39, 66, 1.6), fill: i.colors.spark, opacity: 0.9 },
+      { kind: 'path', d: starPath(36.5, 72, 1.4), fill: i.colors.spark, opacity: 0.9 },
+      { kind: 'path', d: starPath(41.5, 76, 1.6), fill: i.colors.spark, opacity: 0.9 },
+    );
+  }
   if (markings.length > 0) {
     layers.push({ id: 'markings', shapes: markings, breathAmp: 0.022, breathPhase: 0 });
   }
@@ -778,10 +928,18 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
     { kind: 'rect', x: 35, y: 48, width: 30, height: 28, rx: 8, fill: bodyFill(tint, i.stage) },
     { kind: 'rect', x: 37, y: 78, width: 11, height: 8, rx: 3.5, fill: darken(tint, 0.12) },
     { kind: 'rect', x: 52, y: 78, width: 11, height: 8, rx: 3.5, fill: darken(tint, 0.12) },
-    // Screen inset + a faint spark-colored rim so the face reads lit.
+    // Screen inset + a faint spark-colored rim so the face reads lit; the
+    // rim burns brighter at Luminous and fully at Mythic.
     { kind: 'rect', x: 34, y: 20, width: 32, height: 22, rx: 6, fill: c.text, opacity: 0.85 },
-    { kind: 'rect', x: 34, y: 20, width: 32, height: 22, rx: 6, stroke: c.spark, strokeWidth: 1.5, fill: 'none', opacity: i.stage >= 5 ? 0.6 : 0.35 },
+    { kind: 'rect', x: 34, y: 20, width: 32, height: 22, rx: 6, stroke: c.spark, strokeWidth: i.stage >= 7 ? 2 : 1.5, fill: 'none', opacity: i.stage >= 7 ? 0.9 : i.stage >= 5 ? 0.6 : 0.35 },
   ];
+  if (i.stage >= 6) {
+    // Angled heat fins on the head sides.
+    bodyShapes.push(
+      { kind: 'path', d: 'M 29 19 L 22 15 L 22 26 L 29 28 Z', fill: darken(tint, 0.1) },
+      { kind: 'path', d: 'M 71 19 L 78 15 L 78 26 L 71 28 Z', fill: darken(tint, 0.1) },
+    );
+  }
   if (i.stage >= 2) {
     bodyShapes.push(
       {
@@ -796,6 +954,13 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
       // Chest light.
       { kind: 'circle', cx: 50, cy: 54, r: 3, fill: i.mood !== 'dozing' ? c.spark : c.textMuted },
     );
+    if (i.stage >= 6) {
+      // A flanking indicator pair joins the chest light.
+      bodyShapes.push(
+        { kind: 'circle', cx: 42.5, cy: 54, r: 1.6, fill: i.mood !== 'dozing' ? c.spark : c.textMuted, opacity: 0.85 },
+        { kind: 'circle', cx: 57.5, cy: 54, r: 1.6, fill: i.mood !== 'dozing' ? c.spark : c.textMuted, opacity: 0.85 },
+      );
+    }
   }
   if (i.stage >= 3) {
     // Panel seams: the body detail pass.
@@ -820,6 +985,28 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
       { kind: 'line', x1: 62, y1: 14, x2: 66, y2: 7.5, stroke: darken(tint, 0.08), strokeWidth: 2.2 },
       { kind: 'circle', cx: 67, cy: 6, r: 2.4, fill: lit && i.stage >= 5 ? c.spark : darken(tint, 0.05) },
     );
+  }
+  if (i.stage >= 6) {
+    // The main mast earns a halo ring — a proper broadcast array.
+    antenna.push({
+      kind: 'ellipse',
+      cx: 50,
+      cy: 5,
+      rx: 9,
+      ry: 2.8,
+      stroke: c.spark,
+      strokeWidth: 1.4,
+      fill: 'none',
+      opacity: lit ? 0.7 : 0.3,
+    });
+  }
+  if (i.stage >= 7) {
+    // Twin drone bits hover beside the head, rocking with the antenna sway.
+    const bit = (x: number): RigShape[] => [
+      { kind: 'rect', x, y: 24, width: 7, height: 7, rx: 2.2, fill: darken(tint, 0.1) },
+      { kind: 'circle', cx: x + 3.5, cy: 27.5, r: 1.4, fill: lit ? c.spark : c.textMuted },
+    ];
+    antenna.push(...bit(13), ...bit(80));
   }
   layers.push({
     id: 'front',
@@ -906,6 +1093,21 @@ function novaLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
         opacity: 0.9,
       });
     }
+    if (i.stage >= 6) {
+      // The cape turns cosmic: star specks scattered across the cloth.
+      capeShapes.push(
+        { kind: 'path', d: starPath(33, 68, 1.8), fill: i.colors.spark, opacity: 0.85 },
+        { kind: 'path', d: starPath(67, 70, 1.8), fill: i.colors.spark, opacity: 0.85 },
+        { kind: 'path', d: starPath(30, 79, 1.5), fill: i.colors.spark, opacity: 0.7 },
+        { kind: 'path', d: starPath(70, 80, 1.5), fill: i.colors.spark, opacity: 0.7 },
+      );
+    }
+    if (i.stage >= 7) {
+      capeShapes.push(
+        { kind: 'path', d: starPath(38, 76, 1.4), fill: i.colors.spark, opacity: 0.75 },
+        { kind: 'path', d: starPath(62, 62, 1.4), fill: i.colors.spark, opacity: 0.75 },
+      );
+    }
     layers.push({
       id: 'back',
       shapes: capeShapes,
@@ -916,16 +1118,24 @@ function novaLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
     });
   }
 
-  // Arms end in determined little fists.
+  // Arms end in determined little fists; at Mythic a pair of energy stars
+  // rides beside them (they sway with the arms, so they read as orbiting).
   if (i.stage >= 2) {
+    const armShapes: RigShape[] = [
+      { kind: 'line', x1: 36, y1: 62, x2: 27, y2: 70, stroke: darken(tint, 0.06), strokeWidth: 6.5, strokeLinecap: 'round' },
+      { kind: 'line', x1: 64, y1: 62, x2: 73, y2: 70, stroke: darken(tint, 0.06), strokeWidth: 6.5, strokeLinecap: 'round' },
+      { kind: 'circle', cx: 26.5, cy: 70.5, r: 4.2, fill: darken(tint, 0.16) },
+      { kind: 'circle', cx: 73.5, cy: 70.5, r: 4.2, fill: darken(tint, 0.16) },
+    ];
+    if (i.stage >= 7) {
+      armShapes.push(
+        { kind: 'path', d: starPath(19.5, 63, 2.2), fill: i.colors.spark, opacity: 0.9 },
+        { kind: 'path', d: starPath(80.5, 63, 2.2), fill: i.colors.spark, opacity: 0.9 },
+      );
+    }
     layers.push({
       id: 'arms',
-      shapes: [
-        { kind: 'line', x1: 36, y1: 62, x2: 27, y2: 70, stroke: darken(tint, 0.06), strokeWidth: 6.5, strokeLinecap: 'round' },
-        { kind: 'line', x1: 64, y1: 62, x2: 73, y2: 70, stroke: darken(tint, 0.06), strokeWidth: 6.5, strokeLinecap: 'round' },
-        { kind: 'circle', cx: 26.5, cy: 70.5, r: 4.2, fill: darken(tint, 0.16) },
-        { kind: 'circle', cx: 73.5, cy: 70.5, r: 4.2, fill: darken(tint, 0.16) },
-      ],
+      shapes: armShapes,
       breathAmp: 0.03,
       breathPhase: 0.3,
       sway: 2,
@@ -953,14 +1163,30 @@ function novaLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
   }
   layers.push({ id: 'body', shapes: bodyShapes, breathAmp: 0.024, breathPhase: 0 });
 
-  // Utility belt at Grown.
+  // Utility belt at Grown; epaulettes at Celestial; star diadem at Mythic.
   if (i.stage >= 3) {
+    const markings: RigShape[] = [
+      { kind: 'rect', x: 38, y: 76, width: 24, height: 4, rx: 2, fill: darken(tint, 0.3) },
+      { kind: 'circle', cx: 50, cy: 78, r: 3, fill: i.colors.spark },
+    ];
+    if (i.stage >= 6) {
+      markings.push(
+        { kind: 'ellipse', cx: 36, cy: 59.5, rx: 5.5, ry: 3.5, fill: darken(tint, 0.28) },
+        { kind: 'ellipse', cx: 64, cy: 59.5, rx: 5.5, ry: 3.5, fill: darken(tint, 0.28) },
+        { kind: 'path', d: 'M 32 58.5 Q 36 56.5 40 58.5', stroke: i.colors.spark, strokeWidth: 1.2, strokeLinecap: 'round', fill: 'none', opacity: 0.85 },
+        { kind: 'path', d: 'M 60 58.5 Q 64 56.5 68 58.5', stroke: i.colors.spark, strokeWidth: 1.2, strokeLinecap: 'round', fill: 'none', opacity: 0.85 },
+      );
+    }
+    if (i.stage >= 7) {
+      markings.push(
+        { kind: 'path', d: starPath(41, 17, 1.8), fill: i.colors.spark, opacity: 0.95 },
+        { kind: 'path', d: starPath(50, 14, 2.4), fill: i.colors.spark },
+        { kind: 'path', d: starPath(59, 17, 1.8), fill: i.colors.spark, opacity: 0.95 },
+      );
+    }
     layers.push({
       id: 'markings',
-      shapes: [
-        { kind: 'rect', x: 38, y: 76, width: 24, height: 4, rx: 2, fill: darken(tint, 0.3) },
-        { kind: 'circle', cx: 50, cy: 78, r: 3, fill: i.colors.spark },
-      ],
+      shapes: markings,
       breathAmp: 0.024,
       breathPhase: 0,
     });
@@ -1027,6 +1253,29 @@ function rexLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
       { kind: 'path', d: 'M 73 70 L 79 62.5 L 80.5 71 Z', fill: spike },
     );
   }
+  if (i.stage >= 6) {
+    backShapes.push(
+      // Gem-bright cores light up the crown spikes...
+      { kind: 'path', d: 'M 47 12 L 50 6.5 L 53 12 Z', fill: lighten(i.colors.spark, 0.4) },
+      { kind: 'path', d: 'M 37.5 15.5 L 39 11.5 L 42 14.5 Z', fill: lighten(i.colors.spark, 0.4) },
+      { kind: 'path', d: 'M 62.5 15.5 L 61 11.5 L 58 14.5 Z', fill: lighten(i.colors.spark, 0.4) },
+      // ...and a second spike joins the tail ridge.
+      { kind: 'path', d: 'M 64 77 L 69.5 69.5 L 72 78 Z', fill: spike },
+    );
+  }
+  if (i.stage >= 7) {
+    // Spread dragon wings: a swept top edge out to a clawed tip, scalloped
+    // membrane returning to the shoulder — the hatchling was a dragon all
+    // along.
+    backShapes.push(
+      { kind: 'path', d: 'M 35 53 C 28 46 18 41 11 41 Q 14 51 21 56 Q 27 61 34 63 Z', fill: darken(tint, 0.14) },
+      { kind: 'path', d: 'M 34 60 C 27 56 20 51 13 44', stroke: lighten(tint, 0.25), strokeWidth: 1.4, strokeLinecap: 'round', fill: 'none', opacity: 0.6 },
+      { kind: 'path', d: 'M 11 41 L 8 36.5 L 14.5 38 Z', fill: spike },
+      { kind: 'path', d: 'M 65 53 C 72 46 82 41 89 41 Q 86 51 79 56 Q 73 61 66 63 Z', fill: darken(tint, 0.14) },
+      { kind: 'path', d: 'M 66 60 C 73 56 80 51 87 44', stroke: lighten(tint, 0.25), strokeWidth: 1.4, strokeLinecap: 'round', fill: 'none', opacity: 0.6 },
+      { kind: 'path', d: 'M 89 41 L 92 36.5 L 85.5 38 Z', fill: spike },
+    );
+  }
   layers.push({ id: 'back', shapes: backShapes, breathAmp: 0.022, breathPhase: 0.35, sway: 1.5 });
 
   if (i.stage >= 2) layers.push(stubbyArms(darken(tint, 0.05), 63));
@@ -1053,29 +1302,37 @@ function rexLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils
   }
   layers.push({ id: 'body', shapes: bodyShapes, breathAmp: 0.026, breathPhase: 0 });
 
-  // Belly-plate seams + freckles arrive at Grown.
+  // Belly-plate seams + freckles arrive at Grown; a gold crest at Mythic.
   if (i.stage >= 3) {
+    const markings: RigShape[] = [
+      { kind: 'line', x1: 44, y1: 70, x2: 56, y2: 70, stroke: darken(plate, 0.14), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.7 },
+      { kind: 'line', x1: 45, y1: 75, x2: 55, y2: 75, stroke: darken(plate, 0.14), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.7 },
+      { kind: 'circle', cx: 31, cy: 27, r: 1.8, fill: darken(tint, 0.18), opacity: 0.6 },
+      { kind: 'circle', cx: 27.5, cy: 32, r: 1.4, fill: darken(tint, 0.18), opacity: 0.6 },
+      { kind: 'circle', cx: 69, cy: 27, r: 1.8, fill: darken(tint, 0.18), opacity: 0.6 },
+      { kind: 'circle', cx: 72.5, cy: 32, r: 1.4, fill: darken(tint, 0.18), opacity: 0.6 },
+    ];
+    if (i.stage >= 7) {
+      markings.push({ kind: 'path', d: starPath(50, 65, 2.8), fill: i.colors.spark, opacity: 0.95 });
+    }
     layers.push({
       id: 'markings',
-      shapes: [
-        { kind: 'line', x1: 44, y1: 70, x2: 56, y2: 70, stroke: darken(plate, 0.14), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.7 },
-        { kind: 'line', x1: 45, y1: 75, x2: 55, y2: 75, stroke: darken(plate, 0.14), strokeWidth: 1.6, strokeLinecap: 'round', opacity: 0.7 },
-        { kind: 'circle', cx: 31, cy: 27, r: 1.8, fill: darken(tint, 0.18), opacity: 0.6 },
-        { kind: 'circle', cx: 27.5, cy: 32, r: 1.4, fill: darken(tint, 0.18), opacity: 0.6 },
-        { kind: 'circle', cx: 69, cy: 27, r: 1.8, fill: darken(tint, 0.18), opacity: 0.6 },
-        { kind: 'circle', cx: 72.5, cy: 32, r: 1.4, fill: darken(tint, 0.18), opacity: 0.6 },
-      ],
+      shapes: markings,
       breathAmp: 0.026,
       breathPhase: 0,
     });
   }
 
-  // Lighter muzzle patch with little nostrils, under the eyes.
+  // Lighter muzzle patch with little nostrils, under the eyes; a proud gold
+  // nose horn grows in at Celestial.
   const muzzle: RigShape[] = [
     { kind: 'ellipse', cx: 50, cy: 45, rx: 10, ry: 6.5, fill: plate, opacity: 0.95 },
     { kind: 'circle', cx: 46.5, cy: 42.5, r: 1.1, fill: ink, opacity: 0.75 },
     { kind: 'circle', cx: 53.5, cy: 42.5, r: 1.1, fill: ink, opacity: 0.75 },
   ];
+  if (i.stage >= 6) {
+    muzzle.unshift({ kind: 'path', d: 'M 47.5 40 L 50 34 L 52.5 40 Z', fill: i.colors.spark });
+  }
 
   const { face, pupils } = cuteFace(
     i,
@@ -1109,9 +1366,27 @@ function ottoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
       { kind: 'path', d: 'M 72 6 L 73.5 1.5 L 69 3.8 Z', fill: darken(tint, 0.08) },
     );
   }
+  if (i.stage >= 7) {
+    // A great lunar halo rises behind the head, with a star at each side.
+    backShapes.unshift({
+      kind: 'circle',
+      cx: 50,
+      cy: 32,
+      r: 26,
+      stroke: i.colors.spark,
+      strokeWidth: 1.8,
+      fill: 'none',
+      opacity: 0.45,
+    });
+    backShapes.push(
+      { kind: 'path', d: starPath(24, 32, 1.9), fill: i.colors.spark, opacity: 0.9 },
+      { kind: 'path', d: starPath(76, 32, 1.9), fill: i.colors.spark, opacity: 0.9 },
+    );
+  }
   layers.push({ id: 'back', shapes: backShapes, breathAmp: 0.02, breathPhase: 0.35, sway: 1.5 });
 
-  // Folded wings from Sprout; Luminous wings carry star specks.
+  // Folded wings from Sprout; Luminous wings carry star specks, Celestial
+  // adds a pale feather trim, Mythic scatters more stars down the edge.
   if (i.stage >= 2) {
     const wings: RigShape[] = [
       { kind: 'path', d: 'M 31 56 C 25 60 22 70 26 80 C 31 76 34 68 34 59 Z', fill: darken(tint, 0.1) },
@@ -1121,6 +1396,20 @@ function ottoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
       wings.push(
         { kind: 'path', d: starPath(28.5, 68, 2), fill: i.colors.spark, opacity: 0.9 },
         { kind: 'path', d: starPath(71.5, 68, 2), fill: i.colors.spark, opacity: 0.9 },
+      );
+    }
+    if (i.stage >= 6) {
+      wings.push(
+        { kind: 'path', d: 'M 29 61 C 25.5 66 24.5 72 26.5 77.5', stroke: lighten(tint, 0.3), strokeWidth: 1.6, strokeLinecap: 'round', fill: 'none', opacity: 0.75 },
+        { kind: 'path', d: 'M 71 61 C 74.5 66 75.5 72 73.5 77.5', stroke: lighten(tint, 0.3), strokeWidth: 1.6, strokeLinecap: 'round', fill: 'none', opacity: 0.75 },
+      );
+    }
+    if (i.stage >= 7) {
+      wings.push(
+        { kind: 'path', d: starPath(30.5, 61, 1.5), fill: i.colors.spark, opacity: 0.8 },
+        { kind: 'path', d: starPath(69.5, 61, 1.5), fill: i.colors.spark, opacity: 0.8 },
+        { kind: 'path', d: starPath(27, 75, 1.5), fill: i.colors.spark, opacity: 0.8 },
+        { kind: 'path', d: starPath(73, 75, 1.5), fill: i.colors.spark, opacity: 0.8 },
       );
     }
     layers.push({
@@ -1169,6 +1458,15 @@ function ottoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
       fill: i.colors.spark,
       opacity: 0.95,
     });
+  }
+  if (i.stage >= 6) {
+    // A companion star for the moon crest + a trio below the chest feathers.
+    markings.push(
+      { kind: 'path', d: starPath(60, 14, 1.8), fill: i.colors.spark, opacity: 0.9 },
+      { kind: 'path', d: starPath(44.5, 80, 1.5), fill: i.colors.spark, opacity: 0.8 },
+      { kind: 'path', d: starPath(50, 82, 1.7), fill: i.colors.spark, opacity: 0.85 },
+      { kind: 'path', d: starPath(55.5, 80, 1.5), fill: i.colors.spark, opacity: 0.8 },
+    );
   }
   if (markings.length > 0) {
     layers.push({ id: 'markings', shapes: markings, breathAmp: 0.022, breathPhase: 0 });
@@ -1221,7 +1519,7 @@ export function buildRig(i: RigInputs): RigModel {
                 : unit7Layers(i);
   layers.push(...shell.layers);
 
-  if (i.stage >= 5) layers.push(shimmerLayer(tint));
+  if (i.stage >= 5) layers.push(shimmerLayer(tint, i.stage));
 
   const acc = accessoryLayer(i.accessories, i.colors);
   if (acc) layers.push(acc);

@@ -133,11 +133,13 @@ route (`launchScreen` setting opts down to Today-first).
   changes without a device: the model is pure TS — compile it standalone and
   serialize shapes to SVG (the shape union maps 1:1 onto SVG elements), as
   `scripts/generate-branding.js` does.
-- Evolution: 5 stages from `stageForLevel` (levels 1/3/5/9/14), driven by
-  `progress.lifetime` so forms can never be bought or lost; stages only ever
-  map upward. The evolution moment is detected via the `lastSeenStage`
-  settings key on Home load (works no matter where the award happened) and
-  is replayable from Progress. Poking is affection only — no economy hooks.
+- Evolution: 7 stages from `stageForLevel` (levels 1/3/5/9/14/20/27), driven
+  by `progress.lifetime` so forms can never be bought or lost; stages only
+  ever map upward. `TOP_STAGE` in `companion.ts` is the single "final form"
+  source — never hardcode the top stage number. The evolution moment is
+  detected via the `lastSeenStage` settings key on Home load (works no matter
+  where the award happened) and is replayable from Progress. Poking is
+  affection only — no economy hooks.
 - Theme rule extension: `dayPhase` tokens (morning/evening ambient tints)
   exist in EVERY palette; add them to any new palette.
 - Tab bar: custom SVG glyphs in `src/components/TabBarIcon.tsx` (filled

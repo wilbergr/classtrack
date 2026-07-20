@@ -6,7 +6,7 @@
 
 import { addDays, dueStatus, formatProximity, startOfDay } from '../dates';
 import { getSettingAsync, setSettingAsync } from '../settings';
-import { STAGE_NAMES, stageForLevel } from './companion';
+import { STAGE_NAMES, stageForLevel, TOP_STAGE } from './companion';
 import { BUBBLES, pickTemplate, type BubbleCtx, type BubbleSlot } from './copy';
 import type { ProgressSummary, WeekSummary } from './engine';
 import type { SparkEvent } from './events';
@@ -113,7 +113,7 @@ export function buildBubbleCtx(inputs: GuidanceInputs): BubbleCtx {
     momentum: inputs.progress.momentum,
     earned: 0,
     stage: STAGE_NAMES[stage],
-    finalForm: stage >= 5,
+    finalForm: stage >= TOP_STAGE,
   };
 }
 
@@ -175,7 +175,7 @@ export function composeCelebration(
     momentum: 0,
     earned: event.total,
     stage: STAGE_NAMES[stageForLevel(event.level)],
-    finalForm: stageForLevel(event.level) >= 5,
+    finalForm: stageForLevel(event.level) >= TOP_STAGE,
   };
   const us = pickOne(slot, inputs.packId, ctx, inputs.now, recent);
   return us;
@@ -202,7 +202,7 @@ export function composeReaction(
     momentum: 0,
     earned: 0,
     stage: STAGE_NAMES[stageForLevel(level)],
-    finalForm: stageForLevel(level) >= 5,
+    finalForm: stageForLevel(level) >= TOP_STAGE,
   };
   return pickOne(slot, inputs.packId, ctx, inputs.now, recent);
 }
