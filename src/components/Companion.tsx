@@ -38,6 +38,8 @@ interface Props {
   accessories?: string[];
   /** Increment to play a species-flavored poke reaction (affection only). */
   pokeSignal?: number;
+  /** Ready grace shields (0–2) shown as guardian charms; omit to draw none. */
+  shields?: number;
 }
 
 export default function Companion({
@@ -47,6 +49,7 @@ export default function Companion({
   size,
   accessories = [],
   pokeSignal = 0,
+  shields = 0,
 }: Props) {
   const { colors } = useTheme();
   const calm = useCalmMotion();
@@ -225,8 +228,8 @@ export default function Companion({
 
   const eyesClosed = blink || mood === 'dozing';
   const model: RigModel = React.useMemo(
-    () => buildRig({ species, stage, mood, eyesClosed, colors, accessories }),
-    [species, stage, mood, eyesClosed, colors, accessories],
+    () => buildRig({ species, stage, mood, eyesClosed, colors, accessories, shields }),
+    [species, stage, mood, eyesClosed, colors, accessories, shields],
   );
 
   const rootStyle = useAnimatedStyle(() => {

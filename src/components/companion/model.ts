@@ -61,7 +61,8 @@ export type RigLayerId =
   | 'face'
   | 'front'
   | 'shimmer'
-  | 'accessory';
+  | 'accessory'
+  | 'guard';
 
 export interface RigLayer {
   id: RigLayerId;
@@ -107,6 +108,12 @@ export interface RigInputs {
   eyesClosed: boolean;
   colors: ThemeColors;
   accessories: string[];
+  /**
+   * Ready grace shields (0–2), shown as tiny guardian charms at the
+   * companion's feet. Omit (or 0) to draw none — a resting shield simply
+   * isn't there, never a dimmed or broken one.
+   */
+  shields?: number;
 }
 
 // ---------- shared pieces ----------
@@ -377,6 +384,30 @@ function accessoryLayer(keys: string[], c: ThemeColors): RigLayer | null {
   }
   if (shapes.length === 0) return null;
   return { id: 'accessory', shapes, breathAmp: 0.02, breathPhase: 0.05 };
+}
+
+/**
+ * Ready grace shields as tiny guardian charms standing by the companion's
+ * feet — one per shield, glowing on the aura pulse. The second charm flanks
+ * the opposite side so a pair reads as a little honor guard.
+ */
+function guardLayer(c: ThemeColors, count: number): RigLayer | null {
+  if (count <= 0) return null;
+  const charm = (cx: number): RigShape[] => [
+    {
+      kind: 'path',
+      d:
+        `M ${cx} 76.4 C ${cx + 2.2} 77.6 ${cx + 3.5} 78 ${cx + 4.3} 78.2 ` +
+        `L ${cx + 4.3} 81.2 C ${cx + 4.3} 83.6 ${cx + 2.5} 85.2 ${cx} 86 ` +
+        `C ${cx - 2.5} 85.2 ${cx - 4.3} 83.6 ${cx - 4.3} 81.2 L ${cx - 4.3} 78.2 ` +
+        `C ${cx - 3.5} 78 ${cx - 2.2} 77.6 ${cx} 76.4 Z`,
+      fill: c.spark,
+      opacity: 0.95,
+    },
+    { kind: 'path', d: starPath(cx, 80.9, 1.8), fill: WHITE, opacity: 0.9 },
+  ];
+  const shapes = count >= 2 ? [...charm(21), ...charm(79)] : charm(79);
+  return { id: 'guard', shapes, breathAmp: 0, breathPhase: 0, pulse: true };
 }
 
 // ---------- the cartoon face (organic species) ----------
@@ -1523,6 +1554,9 @@ export function buildRig(i: RigInputs): RigModel {
 
   const acc = accessoryLayer(i.accessories, i.colors);
   if (acc) layers.push(acc);
+
+  const guard = guardLayer(i.colors, i.shields ?? 0);
+  if (guard) layers.push(guard);
 
   return {
     layers,

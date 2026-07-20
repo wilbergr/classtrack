@@ -111,6 +111,7 @@ export function buildBubbleCtx(inputs: GuidanceInputs): BubbleCtx {
     nudgeWhen: target ? formatProximity(target.dueAt, now) : '',
     level: inputs.progress.level,
     momentum: inputs.progress.momentum,
+    shields: inputs.progress.grace,
     earned: 0,
     stage: STAGE_NAMES[stage],
     finalForm: stage >= TOP_STAGE,
@@ -140,6 +141,9 @@ export function composeGuidance(inputs: GuidanceInputs, recent: string[]): Utter
   // Name + stage progress lives in the rotation now that Home has no
   // name/stage label under the companion.
   if (inputs.hasCompanion) slots.push('identity');
+  // The guardian charms get words — but only while at least one shield is
+  // up: resting shields are simply not mentioned (nothing reads as lost).
+  if (inputs.progress.grace > 0) slots.push('shieldStatus');
 
   // Ambient filler, one flavor at most.
   if (ctx.dueToday === 0 && ctx.dueTomorrow === 0 && ctx.overdue === 0) {
@@ -173,6 +177,7 @@ export function composeCelebration(
     nudgeWhen: '',
     level: event.level,
     momentum: 0,
+    shields: 0,
     earned: event.total,
     stage: STAGE_NAMES[stageForLevel(event.level)],
     finalForm: stageForLevel(event.level) >= TOP_STAGE,
@@ -200,6 +205,7 @@ export function composeReaction(
     nudgeWhen: '',
     level,
     momentum: 0,
+    shields: 0,
     earned: 0,
     stage: STAGE_NAMES[stageForLevel(level)],
     finalForm: stageForLevel(level) >= TOP_STAGE,

@@ -280,6 +280,8 @@ export interface BubbleCtx {
   nudgeWhen: string;
   level: number;
   momentum: number;
+  /** Grace shields currently ready (0–2). */
+  shields: number;
   /** Sparks earned by the action being celebrated. */
   earned: number;
   /** Display name of the companion's evolution stage (e.g. "Sprout"). */
@@ -306,7 +308,9 @@ export type BubbleSlot =
   | 'idlePoke'
   | 'dozing'
   /** Name + stage-progress intro — replaces the old Home name/stage label. */
-  | 'identity';
+  | 'identity'
+  /** Ready-shield flavor (queued only when at least one shield is up). */
+  | 'shieldStatus';
 
 export type BubbleTemplate = (ctx: BubbleCtx) => string;
 export type BubbleSet = Record<BubbleSlot, BubbleTemplate[]>;
@@ -396,6 +400,14 @@ const emberBubbles: BubbleSet = {
         ? `It's me, ${c.name}! Level ${c.level}, final form, maximum sparkle. ✦`
         : `It's me, ${c.name}! Level ${c.level} ${c.stage} — my next form is already wiggling. ✦`,
   ],
+  shieldStatus: [
+    (c) =>
+      c.shields >= 2
+        ? 'Two shields up by my feet! A busy day just bounces right off our momentum. ✦'
+        : 'One shield up by my feet — your momentum has a bodyguard. ✦',
+    (c) =>
+      `Shield check: ${c.shields >= 2 ? 'both' : 'one'} ready. I guard the momentum, you take the glory. ✦`,
+  ],
 };
 
 const sageBubbles: BubbleSet = {
@@ -473,6 +485,13 @@ const sageBubbles: BubbleSet = {
         ? `${c.name}, level ${c.level}. I've finished growing; the rest is just company.`
         : `${c.name}, level ${c.level}. My next form arrives in its own time — no rush.`,
   ],
+  shieldStatus: [
+    (c) =>
+      c.shields >= 2
+        ? 'Both shields stand ready beside me. A full day away is already covered.'
+        : 'A shield stands ready beside me. One busy day is already covered.',
+    () => 'The shields keep themselves — fresh ones arrive each Monday, nothing to tend.',
+  ],
 };
 
 const dotBubbles: BubbleSet = {
@@ -545,6 +564,10 @@ const dotBubbles: BubbleSet = {
       `Designation: ${c.name}. Form: ${c.stage}. ${c.finalForm ? 'Upgrades: complete. Beep.' : 'Next upgrade: brewing. Beep.'}`,
     (c) => `${c.name}. Level ${c.level}. ${c.stage} form. Status: pleased to be here.`,
   ],
+  shieldStatus: [
+    (c) => `Shields ready: ${c.shields}. Momentum: protected. Beep.`,
+    () => 'Shield systems: operational. Busy days bounce off. Beep.',
+  ],
 };
 
 const plainBubbles: BubbleSet = {
@@ -577,6 +600,9 @@ const plainBubbles: BubbleSet = {
   idlePoke: [() => 'Hi.'],
   dozing: [() => 'Resting. Tap to say hi.'],
   identity: [(c) => `${c.name} — ${c.stage}, level ${c.level}.`],
+  shieldStatus: [
+    (c) => `${c.shields} shield${c.shields === 1 ? '' : 's'} ready — a day off is covered.`,
+  ],
 };
 
 export const BUBBLES: Record<VoicePackId, BubbleSet> = {

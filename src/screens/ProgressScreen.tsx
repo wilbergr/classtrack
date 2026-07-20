@@ -11,6 +11,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import EvolutionMoment from '../components/EvolutionMoment';
+import MomentumInfoSheet from '../components/MomentumInfoSheet';
+import ShieldIcon from '../components/ShieldIcon';
 import SparkPill from '../components/SparkPill';
 import SparkShop from '../components/SparkShop';
 import { stageForLevel, STAGE_NAMES, type CompanionStage } from '../gamification/companion';
@@ -39,6 +41,7 @@ export default function ProgressScreen({ navigation }: RootStackScreenProps<'Pro
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [week, setWeek] = useState<WeekSummary | null>(null);
   const [showEvolution, setShowEvolution] = useState(false);
+  const [showMomentumInfo, setShowMomentumInfo] = useState(false);
   const settings = useSettings();
 
   const load = useCallback(async () => {
@@ -133,7 +136,17 @@ export default function ProgressScreen({ navigation }: RootStackScreenProps<'Pro
         />
       )}
 
-      <Text style={styles.sectionTitle}>Momentum</Text>
+      <View style={styles.sectionRow}>
+        <Text style={[styles.sectionTitle, styles.sectionTitleInRow]}>Momentum</Text>
+        <Pressable
+          onPress={() => setShowMomentumInfo(true)}
+          hitSlop={spacing.md}
+          accessibilityRole="button"
+          accessibilityLabel="How momentum and shields work"
+        >
+          <Text style={styles.infoLink}>How it works</Text>
+        </Pressable>
+      </View>
       <View style={styles.card}>
         <View style={styles.momentumRow}>
           <Text
@@ -149,12 +162,7 @@ export default function ProgressScreen({ navigation }: RootStackScreenProps<'Pro
               accessibilityLabel={`${progress.grace} of ${GRACE_CAP} shields ready`}
             >
               {Array.from({ length: GRACE_CAP }, (_, i) => (
-                <Text
-                  key={i}
-                  style={[styles.shield, i >= progress.grace && styles.shieldResting]}
-                >
-                  🛡
-                </Text>
+                <ShieldIcon key={i} ready={i < progress.grace} size={16} />
               ))}
               <Text style={styles.shieldLabel}>
                 {progress.grace === GRACE_CAP
@@ -191,6 +199,13 @@ export default function ProgressScreen({ navigation }: RootStackScreenProps<'Pro
       </View>
 
       <SparkShop balance={progress.balance} />
+
+      <MomentumInfoSheet
+        visible={showMomentumInfo}
+        onClose={() => setShowMomentumInfo(false)}
+        grace={progress.grace}
+        hasCompanion={species !== null}
+      />
     </ScrollView>
   );
 }
@@ -244,6 +259,15 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.xl,
     marginBottom: spacing.sm,
   },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  sectionTitleInRow: { marginTop: 0, marginBottom: 0 },
+  infoLink: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.md,
@@ -255,9 +279,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   momentumValue: { color: colors.spark, fontSize: 44, fontWeight: '800' },
   momentumMeta: { flex: 1 },
   momentumBest: { color: colors.textMuted, fontSize: 14, fontWeight: '600' },
-  shieldRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs },
-  shield: { fontSize: 16, marginRight: 2 },
-  shieldResting: { opacity: 0.25 },
+  shieldRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: spacing.xs },
   shieldLabel: { color: colors.textMuted, fontSize: 12, marginLeft: spacing.xs },
   hint: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginTop: spacing.md },
   weekRow: { flexDirection: 'row', justifyContent: 'space-around' },

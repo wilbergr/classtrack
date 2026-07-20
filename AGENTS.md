@@ -140,6 +140,11 @@ route (`launchScreen` setting opts down to Today-first).
   detected via the `lastSeenStage` settings key on Home load (works no matter
   where the award happened) and is replayable from Progress. Poking is
   affection only — no economy hooks.
+- Shields (grace) surface from one source (`progress.grace`) in three places:
+  the Progress `ShieldIcon` row + `MomentumInfoSheet` explainer, the rig's
+  `guard` charm layer (`shields` prop on `Companion`, passed on Home only),
+  and the `shieldStatus` bubble slot — queued only when grace > 0, because
+  resting shields are never mentioned (copy rulebook: nothing reads as lost).
 - Theme rule extension: `dayPhase` tokens (morning/evening ambient tints)
   exist in EVERY palette; add them to any new palette.
 - Tab bar: custom SVG glyphs in `src/components/TabBarIcon.tsx` (filled
