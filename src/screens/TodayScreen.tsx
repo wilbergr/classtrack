@@ -5,6 +5,7 @@ import { Alert, Pressable, SectionList, StyleSheet, Text, View } from 'react-nat
 import AssignmentRow from '../components/AssignmentRow';
 import CompanionHeader from '../components/CompanionHeader';
 import EmptyState from '../components/EmptyState';
+import FireworksCelebration from '../components/FireworksCelebration';
 import HorizonStrip from '../components/HorizonStrip';
 import QuickAddSheet from '../components/QuickAddSheet';
 import SparkPill from '../components/SparkPill';
@@ -155,6 +156,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
           loaded ? (
             <EmptyState
               emoji="🎉"
+              renderIcon={hasSubjects ? () => <FireworksCelebration /> : undefined}
               title="Nothing due"
               message={
                 hasSubjects
