@@ -65,6 +65,27 @@ export function dueStatus(
   return 'upcoming';
 }
 
+/**
+ * Split open assignments into the three live buckets Today and Home both read
+ * (completed items fall out). One source of truth for the bucketing so the
+ * Home focus preview and the Today list can never drift apart.
+ */
+export function bucketByDueStatus<T extends { dueAt: number; completed: boolean }>(
+  assignments: T[],
+  now: number = Date.now(),
+): { overdue: T[]; today: T[]; upcoming: T[] } {
+  const overdue: T[] = [];
+  const today: T[] = [];
+  const upcoming: T[] = [];
+  for (const a of assignments) {
+    const s = dueStatus(a, now);
+    if (s === 'overdue') overdue.push(a);
+    else if (s === 'today') today.push(a);
+    else if (s === 'upcoming') upcoming.push(a);
+  }
+  return { overdue, today, upcoming };
+}
+
 // ---------- visual time / urgency ----------
 
 /** Cool→warm buckets for the heat ramp. Matches ThemeColors.ramp keys. */

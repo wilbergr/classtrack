@@ -99,12 +99,31 @@ One economy, one face: captures/completions earn **Sparks** (schema v2:
 The companion is the app's face: `Home` is the first tab and the initial
 route (`launchScreen` setting opts down to Today-first).
 
-- `src/screens/HomeScreen.tsx` — bubble queue + big companion + glance day
-  card + quick add/Progress actions. Companion `none` renders the `EnergyOrb`
-  home with Plain-pack info-card bubbles; same layout, no dead end. There is
-  deliberately NO name/stage label under the companion — the `identity`
-  bubble slot carries name + stage progress instead; renaming lives in
-  Settings → Sidekick.
+- `src/screens/HomeScreen.tsx` — illustrated scene backdrop + bubble queue +
+  big companion + `FocusPreview` slot + quick add/Progress actions, laid out
+  as a centered stage (no scroll: `companionSize` is bounded by BOTH width and
+  height so the preview never overflows a short screen). Companion `none`
+  renders the `EnergyOrb` home with Plain-pack info-card bubbles; same layout,
+  no dead end. There is deliberately NO name/stage label under the companion —
+  the `identity` bubble slot carries name + stage progress instead; renaming
+  lives in Settings → Sidekick.
+- **Scene backdrop** (`src/components/scenery/`): a Finch-style illustrated
+  room the companion stands in, themed per active palette (so it changes with
+  the companion). `model.ts` is a pure parametric scene (themeId + colors +
+  dayPhase → primitive shapes in a 100×176 space, floor line `FLOOR_Y`);
+  `SCENE_MOTIF` picks each theme's flavor (hearth/garden/twilight/workshop/…).
+  `Scenery.tsx` draws it as STATIC react-native-svg (New-Arch rule holds —
+  never per-frame SVG props), adds the day-phase focal halo behind the
+  companion, and an optional calm-gated drift-mote layer (wrapper transforms
+  only). Same pattern as the rig: all colors derive from palette tokens (only
+  literal is white), so add a `SCENE_MOTIF` entry + `dayPhase` handling for
+  any new theme. Eyeball without a device with the serialize-to-SVG trick
+  (as `scripts/generate-branding.js` does for the rig).
+- **Home focus preview** (`src/components/FocusPreview.tsx`): a condensed
+  glance at overdue+due-today items (top 3, tap-through to Today) that is
+  purely additive — Today owns the full list and all completion. Both screens
+  bucket via the single `bucketByDueStatus` in `dates.ts` (never reimplement).
+  Caught-up state stays the calm one-line glance + level meter.
 - `src/gamification/guidance.ts` — speech bubbles are deterministic
   templates over on-device day data (NO network/LLM, ever). Slots live in
   `BUBBLES` in `copy.ts` (all four packs; apply the copy rulebook to every
