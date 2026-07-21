@@ -44,6 +44,33 @@ Steps 1, 3, and 4 are **interactive and account-bound** — they must be done by
 
 Later builds: `preview` profile = shareable internal APK; `production` = store-ready AAB. `eas.json` sets `appVersionSource: "local"`, so bump `android.versionCode` in `app.json` by hand before store builds.
 
+## iOS build — runbook (owner, one-time setup)
+
+EAS builds iOS **in the cloud** — no Mac needed. `eas build --platform ios` is
+**interactive and account-bound**, so you run it, logged into your own Apple
+Developer account (same rule as the Android section: never run `eas login` /
+`eas build` from an agent session).
+
+1. `eas login` (interactive — your Expo credentials), if not already logged in.
+2. `eas build --profile development --platform ios`
+   - First run prompts to **register/manage signing credentials** — accept the
+     **EAS-managed credentials** option (the simplest path: EAS creates and stores
+     the distribution certificate and provisioning profile for you). Only decline
+     if you already have credential preferences you want to bring.
+   - `app.json` already carries `ios.bundleIdentifier` (`com.wilbergr.classtrack`,
+     matching the Android package) and `ios.buildNumber`. `eas.json` sets
+     `appVersionSource: "local"`, so bump `ios.buildNumber` in `app.json` by hand
+     before store builds (mirrors `android.versionCode`).
+3. **Physical-device builds need the device UDID registered first**:
+   `eas device:create` (also interactive/owner-run) enrolls the device, then the
+   build's provisioning profile can include it. This is **not** needed for a
+   **simulator** build, or when distributing via **TestFlight** (TestFlight uses
+   Apple's own device management — no ad hoc registration).
+
+Later builds: `preview` = internal distribution; `production` = store-ready build
+for App Store / TestFlight. This documents the process — read the current EAS docs
+at build time, as the interactive prompts and options do change.
+
 ## Troubleshooting: running the dev server on WSL2
 
 Lessons from the first real device run:
