@@ -17,6 +17,7 @@ const os = require('os');
 const path = require('path');
 const ts = require('typescript');
 const { Resvg } = require('@resvg/resvg-js');
+const { PNG } = require('pngjs');
 
 const REPO = path.join(__dirname, '..');
 const ASSETS = path.join(REPO, 'assets');
@@ -173,3 +174,79 @@ write(svgDoc({ size: 1024, background: '', rig: sil, rigScale: 0.92 }), 96, 'not
 // Splash: transparent full rig, shown at the plugin's imageWidth over the
 // light ember bg (userInterfaceStyle is light).
 write(svgDoc({ size: 1024, background: '', rig: wisp(), rigScale: 0.92 }), 1024, 'splash-icon.png');
+
+// ---------- Google Play store-listing assets (app-store-assets/) ----------
+// These live OUTSIDE assets/ (they are not bundled into the app): the Play
+// Console listing images. The owner drops screenshots into this same folder
+// by hand alongside these generated ones.
+
+const STORE = path.join(REPO, 'app-store-assets');
+fs.mkdirSync(STORE, { recursive: true });
+
+// Hi-res app icon (Play's 512×512): the same campfire-at-night icon as
+// assets/icon.png, just rasterized at the store's required size.
+{
+  const svg = svgDoc({ size: 1024, background: darkBg, rig: wisp(), rigScale: 0.84 });
+  const r = new Resvg(svg, { fitTo: { mode: 'width', value: 512 } });
+  fs.writeFileSync(path.join(STORE, 'icon-512.png'), r.render().asPng());
+  console.log('wrote app-store-assets/icon-512.png');
+}
+
+// Feature graphic (1024×500 landscape): same Wisp rig + Ember wordmark on the
+// light ember bg, laid out landscape so it reads at Play's small thumbnail
+// size. Play Console REJECTS any alpha channel on this asset, so it is
+// flattened to a 24-bit RGB PNG (color type 2) via pngjs — every pixel is
+// already opaque over the bg.
+
+/** Compose the 1024×500 banner SVG: warm bg + halo + wordmark + Wisp. */
+function featureGraphicSvg() {
+  const W = 1024;
+  const H = 500;
+  const rig = wisp(); // full rig incl. shadow
+  const s = 4.1; // rig display scale (model is 0–100 units)
+  const cx = 796; // rig horizontal center (right third)
+  const cyCenter = 252; // rig vertical center → model point (50,50)
+  const tx = cx - 50 * s;
+  const ty = cyCenter - 50 * s;
+
+  // Soft warm sun-glow behind the companion (fades into the bg; flattened out).
+  const haloR = 250;
+  const halo =
+    `<radialGradient id="haloGrad" gradientUnits="userSpaceOnUse" cx="${cx}" cy="236" r="${haloR}">` +
+    `<stop offset="0" stop-color="${colors.highlight}" stop-opacity="1"/>` +
+    `<stop offset="0.55" stop-color="#FFE6C4" stop-opacity="0.55"/>` +
+    `<stop offset="1" stop-color="${colors.bg}" stop-opacity="0"/></radialGradient>`;
+
+  const tf = 'font-family="DejaVu Sans, sans-serif"';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs>${halo}
+${rig.defs}</defs>
+<rect width="${W}" height="${H}" fill="${colors.bg}"/>
+<circle cx="${cx}" cy="236" r="${haloR}" fill="url(#haloGrad)"/>
+<text x="64" y="238" ${tf} font-weight="bold" font-size="104" fill="${colors.primary}" letter-spacing="-1">ClassTrack</text>
+<text x="68" y="300" ${tf} font-weight="bold" font-size="35" fill="${colors.text}">Stay on top of homework</text>
+<text x="68" y="344" ${tf} font-size="27" fill="${colors.textMuted}">Subject-organized. All on your device.</text>
+<g transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${s.toFixed(4)})">
+${rig.body}
+</g>
+</svg>`;
+}
+
+/**
+ * Rasterize an SVG to an alpha-free 24-bit RGB PNG (Play-Console-safe). resvg
+ * always renders RGBA; pngjs re-encodes as color type 2, dropping the (fully
+ * opaque) alpha channel.
+ */
+function writeOpaquePng(svg, width, file) {
+  const img = new Resvg(svg, {
+    fitTo: { mode: 'width', value: width },
+    font: { loadSystemFonts: true, defaultFontFamily: 'DejaVu Sans' },
+  }).render();
+  const png = new PNG({ width: img.width, height: img.height });
+  Buffer.from(img.pixels).copy(png.data); // RGBA in
+  const out = PNG.sync.write(png, { colorType: 2, inputColorType: 6, inputHasAlpha: true });
+  fs.writeFileSync(path.join(STORE, file), out);
+  console.log('wrote', `app-store-assets/${file}`, `(${img.width}×${img.height}, no alpha)`);
+}
+
+writeOpaquePng(featureGraphicSvg(), 1024, 'feature-graphic.png');
