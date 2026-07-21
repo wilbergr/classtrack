@@ -83,8 +83,14 @@ One economy, one face: captures/completions earn **Sparks** (schema v2:
   diagnosis/clinical wording (it's a fun planner for every student); no shame
   ("failed/broke/lost/still haven't"); nothing is ever taken away (levels
   never drop, Sparks never revoked, companion never sickens — worst case
-  asleep); no timed/expiring rewards; overdue = "whenever you're ready",
-  digest-only, never pushed; all state on-device, no network calls.
+  asleep); no timed/expiring rewards; overdue = "whenever you're ready"
+  register, never a per-item list and never shame, but mentioned ONCE at every
+  regular notification interval while items remain: the digest's overdue clause
+  (a soft aggregate, "a couple things"), an `overdueTag` appended to each
+  reminder, and a standalone `overdueNudge` (digest channel) at 4 PM on the
+  empty-upcoming days a digest skips. The tag and standalone nudge are
+  deliberately count-free ("a little from before"); each is a single calm line,
+  re-armed per app open (repeated, never stacked); all on-device, no network.
 - Voice capture (`expo-speech-recognition`) is default-OFF with a disclosure
   in Settings: the OS speech engine may route audio through Google/Apple —
   keep it opt-in.
