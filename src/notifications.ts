@@ -29,6 +29,8 @@ export const DIGEST_DAYS = 7;
 const RECENT_TEMPLATES_KEY = 'recentReminderTemplates';
 const FIRST_REMINDER_KEY = 'firstReminderShown';
 const DIGEST_IDS_KEY = 'digestNotificationIds';
+/** Ids of the standalone overdue nudges — one per empty-upcoming 4 PM slot. */
+const OVERDUE_NUDGE_IDS_KEY = 'overdueNudgeNotificationIds';
 /** Never repeat any of the last N reminder bodies. */
 const RECENT_RING_SIZE = 6;
 
@@ -202,56 +204,84 @@ async function composeReminderBodyAsync(
   const pack = VOICE_PACKS[packId];
   const slot: ReminderSlot = t.kind === 'evening-before' ? 'eveningBefore' : 'morningOf';
 
+  let body: string;
   try {
     // The very first reminder this install ever schedules gets a hello.
     const firstShown = await getSettingAsync(FIRST_REMINDER_KEY, false);
     if (!firstShown) {
       await setSettingAsync(FIRST_REMINDER_KEY, true);
-      return pack.firstEver[0](ctx);
-    }
-
-    // Heavy due-day (≥3 items): the evening-before reminder says so.
-    let pool = pack.reminders[slot][type];
-    let poolKey = `${packId}:${slot}:${type}`;
-    if (slot === 'eveningBefore') {
-      const dayStart = startOfDay(dueAt);
-      const dueCount = await countOpenDueBetween(dayStart, addDays(dayStart, 1));
-      if (dueCount >= 3 && pack.bigDay.length > 0) {
-        pool = pack.bigDay;
-        poolKey = `${packId}:bigDay`;
+      body = pack.firstEver[0](ctx);
+    } else {
+      // Heavy due-day (≥3 items): the evening-before reminder says so.
+      let pool = pack.reminders[slot][type];
+      let poolKey = `${packId}:${slot}:${type}`;
+      if (slot === 'eveningBefore') {
+        const dayStart = startOfDay(dueAt);
+        const dueCount = await countOpenDueBetween(dayStart, addDays(dayStart, 1));
+        if (dueCount >= 3 && pack.bigDay.length > 0) {
+          pool = pack.bigDay;
+          poolKey = `${packId}:bigDay`;
+        }
       }
-    }
 
-    const recent = await getSettingAsync<string[]>(RECENT_TEMPLATES_KEY, []);
-    const picked = pickTemplate(pool, poolKey, assignmentId, t.fireAt.getTime(), recent);
-    await setSettingAsync(
-      RECENT_TEMPLATES_KEY,
-      [...recent, picked.key].slice(-RECENT_RING_SIZE),
-    );
-    return picked.value(ctx);
+      const recent = await getSettingAsync<string[]>(RECENT_TEMPLATES_KEY, []);
+      const picked = pickTemplate(pool, poolKey, assignmentId, t.fireAt.getTime(), recent);
+      await setSettingAsync(
+        RECENT_TEMPLATES_KEY,
+        [...recent, picked.key].slice(-RECENT_RING_SIZE),
+      );
+      body = picked.value(ctx);
+    }
   } catch {
     // Copy selection must never block a reminder.
-    return `"${title}" is due ${whenPhrase}.`;
+    body = `"${title}" is due ${whenPhrase}.`;
   }
+
+  // Gentle repeated overdue mention: every reminder that fires while OTHER
+  // items are still past due carries one calm line about it — never a count,
+  // never a list. This reminder's own item is due in the future (reminders are
+  // only scheduled before the due time), so it never counts itself.
+  try {
+    if (pack.overdueTag.length > 0) {
+      const overdueCount = await countOpenOverdue(t.fireAt.getTime());
+      if (overdueCount > 0) {
+        const tag = pack.overdueTag[Math.abs(assignmentId) % pack.overdueTag.length];
+        body = `${body} ${tag}`;
+      }
+    }
+  } catch {
+    // The overdue tag is additive — never let it block a reminder.
+  }
+  return body;
 }
 
 /**
  * Cancel + reschedule the rolling 4:00 PM "plan your evening" digests: one
- * per upcoming day whose NEXT day has due items as of scheduling (empty days
- * are skipped entirely). Overdue items are only ever mentioned here, gently.
- * Ids persist in settings (same persist-ids invariant, app-level).
+ * per upcoming day whose NEXT day has due items as of scheduling. On the
+ * empty-upcoming days a digest skips, a standalone gentle `overdueNudge` takes
+ * the 4 PM slot instead whenever items remain overdue — so overdue earns one
+ * calm mention at every 4 PM interval, never a count/list, never stacked.
+ * Digest + nudge ids persist separately (same persist-ids invariant, app-level).
  * Call on app open.
  */
 export async function refreshDailyDigestsAsync(): Promise<void> {
   const oldIds = await getSettingAsync<string[]>(DIGEST_IDS_KEY, []);
-  await cancelRemindersAsync(oldIds);
+  const oldOverdueIds = await getSettingAsync<string[]>(OVERDUE_NUDGE_IDS_KEY, []);
+  await cancelRemindersAsync([...oldIds, ...oldOverdueIds]);
   await setSettingAsync(DIGEST_IDS_KEY, []);
+  await setSettingAsync(OVERDUE_NUDGE_IDS_KEY, []);
 
   if ((await getNotificationPermissionAsync()) !== 'granted') return;
 
   const pack = VOICE_PACKS[getCachedSettings().voicePack];
   const now = Date.now();
   const ids: string[] = [];
+  const overdueIds: string[] = [];
+  // Every 4 PM slot in the horizon gets a gentle overdue mention while items
+  // remain overdue: the digest carries it inline when one is scheduled, and a
+  // standalone `overdueNudge` covers the empty-upcoming days a digest skips.
+  // Both are count-free and re-armed on every app open, so overdue is mentioned
+  // once per interval, never listed, never stacked.
   for (let d = 0; d < DIGEST_DAYS; d++) {
     const fireAt = new Date(addDays(startOfDay(now), d));
     fireAt.setHours(DIGEST_HOUR, 0, 0, 0);
@@ -259,24 +289,47 @@ export async function refreshDailyDigestsAsync(): Promise<void> {
 
     const targetStart = addDays(startOfDay(fireAt.getTime()), 1);
     const dueCount = await countOpenDueBetween(targetStart, addDays(targetStart, 1));
-    if (dueCount === 0) continue;
     const overdueCount = await countOpenOverdue(fireAt.getTime());
 
-    const template = pack.digest[(d + dueCount) % pack.digest.length];
-    const { title, body } = template({ dueCount, overdueCount });
-    try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: { title, body, sound: 'default' },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
-          date: fireAt,
-          channelId: DIGEST_CHANNEL_ID,
-        },
-      });
-      ids.push(id);
-    } catch {
-      // Keep going; a failed digest is not worth surfacing.
+    if (dueCount > 0) {
+      // A digest fires this 4 PM — its template already speaks the gentle
+      // overdue line when overdueCount > 0.
+      const template = pack.digest[(d + dueCount) % pack.digest.length];
+      const { title, body } = template({ dueCount, overdueCount });
+      try {
+        const id = await Notifications.scheduleNotificationAsync({
+          content: { title, body, sound: 'default' },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: fireAt,
+            channelId: DIGEST_CHANNEL_ID,
+          },
+        });
+        ids.push(id);
+      } catch {
+        // Keep going; a failed digest is not worth surfacing.
+      }
+    } else if (overdueCount > 0 && pack.overdueNudge.length > 0) {
+      // No digest this 4 PM, but overdue remains — the standalone gentle nudge
+      // keeps overdue from going silent on empty-upcoming days. Count-free,
+      // rotated per weekday so back-to-back days don't read identically.
+      const template = pack.overdueNudge[(d + fireAt.getDay()) % pack.overdueNudge.length];
+      const { title, body } = template();
+      try {
+        const id = await Notifications.scheduleNotificationAsync({
+          content: { title, body, sound: 'default' },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: fireAt,
+            channelId: DIGEST_CHANNEL_ID,
+          },
+        });
+        overdueIds.push(id);
+      } catch {
+        // A failed nudge is not worth surfacing.
+      }
     }
   }
   await setSettingAsync(DIGEST_IDS_KEY, ids);
+  await setSettingAsync(OVERDUE_NUDGE_IDS_KEY, overdueIds);
 }

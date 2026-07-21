@@ -3,8 +3,14 @@
 // less informative than v1); the BODY carries the personality.
 //
 // Copy rules (report §10): no guilt, no sarcasm at the user, no "you still
-// haven't", no diagnosis vocabulary; misses are never mentioned; overdue is
-// digest-only, "whenever you're ready" register.
+// haven't", no diagnosis vocabulary; misses are never mentioned; overdue stays
+// in the "whenever you're ready" register — never a per-item list, never shame.
+// While items remain overdue it earns ONE gentle mention at every regular
+// notification interval: the digest's overdue clause (a soft aggregate, "a
+// couple things"), a short `overdueTag` appended to each reminder, and a
+// standalone `overdueNudge` at 4 PM on the empty-upcoming days a digest skips
+// (see notifications.ts). The tag and nudge are deliberately count-free; each
+// is a single calm line, re-armed per app open — repeated but never stacked.
 
 import type { AssignmentType, VoicePackId } from '../types';
 
@@ -27,6 +33,8 @@ export type ReminderSlot = 'eveningBefore' | 'morningOf';
 
 type Template = (ctx: ReminderCtx) => string;
 type DigestTemplate = (ctx: DigestCtx) => { title: string; body: string };
+/** Standalone gentle overdue nudge — deliberately count-free (no ctx). */
+type OverdueTemplate = () => { title: string; body: string };
 
 export interface VoicePack {
   reminders: Record<ReminderSlot, Record<AssignmentType, Template[]>>;
@@ -35,6 +43,18 @@ export interface VoicePack {
   /** The very first reminder this install ever shows. */
   firstEver: Template[];
   digest: DigestTemplate[];
+  /**
+   * The standalone "there are overdue items" push, used on days no digest is
+   * scheduled to mention them (one per empty-upcoming 4 PM slot). Count-free
+   * and "whenever you're ready" — never a count, never a list, never shame.
+   */
+  overdueNudge: OverdueTemplate[];
+  /**
+   * A short gentle clause appended to a per-assignment reminder body when other
+   * items remain overdue at fire time — so every regular notification interval
+   * carries one calm overdue mention. A fragment, count-free, no list.
+   */
+  overdueTag: string[];
 }
 
 const things = (n: number) => (n === 1 ? '1 thing' : `${n} things`);
@@ -103,6 +123,20 @@ const ember: VoicePack = {
         (overdueCount > 0 ? ` Plus ${things(overdueCount)} from before — no rush.` : ''),
     }),
   ],
+  overdueNudge: [
+    () => ({
+      title: 'Whenever you\'re ready ✦',
+      body: "A little from before is still hanging around — no rush at all. I'll cheer whenever you get to it. ✦",
+    }),
+    () => ({
+      title: 'Still on the bench ✦',
+      body: "Some earlier stuff is waiting whenever you want it. Zero pressure — I'm just here for it. ✦",
+    }),
+  ],
+  overdueTag: [
+    'A little from before is still waiting too — whenever you\'re ready. ✦',
+    'And some earlier stuff is on the bench whenever you want it. ✦',
+  ],
 };
 
 // ---------- Sage: calm ----------
@@ -162,6 +196,20 @@ const sage: VoicePack = {
         `${things(dueCount)} arrive tomorrow. A calm evening pass is plenty.` +
         (overdueCount > 0 ? ` And ${things(overdueCount)} from earlier — no rush at all.` : ''),
     }),
+  ],
+  overdueNudge: [
+    () => ({
+      title: 'A quiet note',
+      body: "There's a little from earlier still open. It'll keep — whenever you're ready.",
+    }),
+    () => ({
+      title: 'No hurry',
+      body: 'Some earlier things are waiting quietly. They go one at a time, whenever suits you.',
+    }),
+  ],
+  overdueTag: [
+    'There\'s a little from earlier still open, too — no rush.',
+    'Some earlier work waits quietly as well, whenever you\'re ready.',
   ],
 };
 
@@ -223,6 +271,20 @@ const dot: VoicePack = {
         (overdueCount > 0 ? ` (${things(overdueCount)} from earlier still hanging around, whenever you're ready.)` : ''),
     }),
   ],
+  overdueNudge: [
+    () => ({
+      title: 'Still here',
+      body: 'A little from before is hanging around. No timer on it. Whenever you\'re ready. Beep.',
+    }),
+    () => ({
+      title: 'Standing by',
+      body: 'Some earlier items remain, unbothered. They will wait as long as it takes. Beep.',
+    }),
+  ],
+  overdueTag: [
+    'Also: earlier stuff, still around. No timer. Beep.',
+    'Some past items linger, unbothered. Whenever. Beep.',
+  ],
 };
 
 // ---------- Plain: no personality (exactly the v1 style) ----------
@@ -252,6 +314,13 @@ const plain: VoicePack = {
         (overdueCount > 0 ? ` ${overdueCount} older item${overdueCount === 1 ? '' : 's'} still open.` : ''),
     }),
   ],
+  overdueNudge: [
+    () => ({
+      title: 'Earlier items',
+      body: 'There are still some earlier items open — whenever you\'re ready.',
+    }),
+  ],
+  overdueTag: ['Some earlier items are still open.'],
 };
 
 function cap(s: string): string {
