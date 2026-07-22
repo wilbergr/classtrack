@@ -922,34 +922,82 @@ function junoLayers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupil
   return { layers, pupils };
 }
 
+/**
+ * One segmented robot arm for unit7 (`sign` -1 = left, +1 = right): an
+ * outlined upper-arm and forearm capsule with a shoulder and elbow bolt and a
+ * two-prong gripper claw at the wrist. Deliberately lighter metal over a dark
+ * panel outline so it separates cleanly from the flush, darker side fins
+ * behind it — reading as a jointed limb, not a body side-panel. From Radiant
+ * (stage 5) a spark pip lights in the gripper.
+ */
+function unit7Arm(tint: string, c: ThemeColors, stage: number, sign: number): RigShape[] {
+  const shX = 50 + sign * 16; // shoulder, tucked at the torso edge
+  const shY = 52;
+  const elX = 50 + sign * 22; // elbow, angled out
+  const elY = 63;
+  const wrX = 50 + sign * 23; // wrist / gripper hub
+  const wrY = 72;
+  const outline = darken(tint, 0.32);
+  const metal = lighten(tint, 0.12);
+  const bolt = darken(tint, 0.24);
+  const boltPin = lighten(tint, 0.22);
+  const claw = lighten(tint, 0.2);
+  // An outlined capsule = a dark round-cap line with a lighter one on top.
+  const capsule = (x1: number, y1: number, x2: number, y2: number, w: number): RigShape[] => [
+    { kind: 'line', x1, y1, x2, y2, stroke: outline, strokeWidth: w + 2.4, strokeLinecap: 'round' },
+    { kind: 'line', x1, y1, x2, y2, stroke: metal, strokeWidth: w, strokeLinecap: 'round' },
+  ];
+  const prong = (x2: number, y2: number, w: number): RigShape[] => [
+    { kind: 'line', x1: wrX, y1: wrY, x2, y2, stroke: outline, strokeWidth: w + 1.6, strokeLinecap: 'round' },
+    { kind: 'line', x1: wrX, y1: wrY, x2, y2, stroke: claw, strokeWidth: w, strokeLinecap: 'round' },
+  ];
+  const shapes: RigShape[] = [
+    ...capsule(shX, shY, elX, elY, 5.6),
+    ...capsule(elX, elY, wrX, wrY, 4.6),
+    // Joint bolts ride on top of the capsules so the arm reads as jointed.
+    { kind: 'circle', cx: elX, cy: elY, r: 2.9, fill: bolt },
+    { kind: 'circle', cx: elX, cy: elY, r: 1.1, fill: boltPin },
+    { kind: 'circle', cx: shX, cy: shY, r: 3.4, fill: bolt },
+    { kind: 'circle', cx: shX, cy: shY, r: 1.3, fill: boltPin },
+    // Two-prong gripper claw splayed open at the wrist.
+    ...prong(wrX + sign * 4, wrY + 3.5, 2.6),
+    ...prong(wrX - sign * 1, wrY + 5, 2.6),
+    { kind: 'circle', cx: wrX, cy: wrY, r: 2.4, fill: metal, stroke: outline, strokeWidth: 1 },
+  ];
+  if (stage >= 5) {
+    shapes.push({ kind: 'circle', cx: wrX, cy: wrY, r: 1, fill: c.spark });
+  }
+  return shapes;
+}
+
 function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupils'] } {
   const tint = i.colors.companion.unit7;
   const c = i.colors;
   const layers: RigLayer[] = [];
 
-  // Side fins from Sprout on (behind the arms).
+  // Flat, darker side fins from Sprout on (behind the arms) — kept plainer and
+  // darker than the arms so the limbs in front clearly separate from them.
   if (i.stage >= 2) {
     layers.push({
       id: 'back',
       shapes: [
-        { kind: 'rect', x: 21, y: 51, width: 6, height: 13, rx: 3, fill: darken(tint, 0.1) },
-        { kind: 'rect', x: 73, y: 51, width: 6, height: 13, rx: 3, fill: darken(tint, 0.1) },
+        { kind: 'rect', x: 21, y: 51, width: 6, height: 13, rx: 3, fill: darken(tint, 0.2) },
+        { kind: 'rect', x: 73, y: 51, width: 6, height: 13, rx: 3, fill: darken(tint, 0.2) },
       ],
       breathAmp: 0.018,
       breathPhase: 0.3,
     });
   }
 
+  // Segmented, outlined robot arms with a gripper claw, hinged at the shoulder.
   if (i.stage >= 2) {
     layers.push({
       id: 'arms',
-      shapes: [
-        { kind: 'rect', x: 26, y: 52, width: 7, height: 16, rx: 3.5, fill: darken(tint, 0.1) },
-        { kind: 'rect', x: 67, y: 52, width: 7, height: 16, rx: 3.5, fill: darken(tint, 0.1) },
-      ],
+      shapes: [...unit7Arm(tint, c, i.stage, -1), ...unit7Arm(tint, c, i.stage, 1)],
       breathAmp: 0.02,
       breathPhase: 0.28,
-      sway: 1.5,
+      sway: 1.8,
+      pivot: { x: 50, y: 52 },
     });
   }
 
@@ -1048,26 +1096,65 @@ function unit7Layers(i: RigInputs): { layers: RigLayer[]; pupils: RigModel['pupi
     pivot: { x: 50, y: 14 },
   });
 
-  // Screen face: big rounded rect eyes wander; arcs replace them when closed.
+  // Screen face: a dark visor carrying two domed lens-eyes. The glowing lens
+  // (radial-shaded, with faint CRT scanlines) is fixed on the screen; a dark
+  // pupil aperture + catchlights ride the renderer's range-based wander so the
+  // eyes track the viewer without the whole eye sliding off the screen. Soft
+  // resting bars replace them when closed.
   const big = i.stage <= 1;
-  const eyeW = big ? 9 : 8;
-  const eyeH = big ? 11 : 10;
+  const tall = i.mood === 'alert';
+  const eyeXs: [number, number] = [41.5, 58.5];
+  const eyeY = 29;
+  const lensW = big ? 10 : 9;
+  const lensH = (tall ? 13 : 11) + (big ? 1 : 0);
+  const lensRim = darken(c.spark, 0.35);
   const faceShapes: RigShape[] = [];
   let pupils: RigModel['pupils'] = null;
   if (i.eyesClosed) {
-    faceShapes.push(
-      { kind: 'rect', x: 37, y: 28, width: 9, height: 2.5, rx: 1.2, fill: c.spark },
-      { kind: 'rect', x: 54, y: 28, width: 9, height: 2.5, rx: 1.2, fill: c.spark },
-    );
+    for (const ex of eyeXs) {
+      faceShapes.push(
+        { kind: 'rect', x: ex - 6, y: eyeY - 2, width: 12, height: 4, rx: 2, fill: c.spark, opacity: 0.18 },
+        { kind: 'rect', x: ex - 5, y: eyeY - 1.3, width: 10, height: 2.6, rx: 1.3, fill: c.spark },
+      );
+    }
   } else {
-    const tall = i.mood === 'alert';
-    pupils = {
-      shapes: [
-        { kind: 'rect', x: 41.5 - eyeW / 2, y: tall ? 22.5 : 24, width: eyeW, height: tall ? eyeH + 1.5 : eyeH, rx: 2.5, fill: c.spark },
-        { kind: 'rect', x: 58.5 - eyeW / 2, y: tall ? 22.5 : 24, width: eyeW, height: tall ? eyeH + 1.5 : eyeH, rx: 2.5, fill: c.spark },
-      ],
-      range: 1.6,
-    };
+    const pupilShapes: RigShape[] = [];
+    const pr = (big ? 3 : 2.6) - (tall ? 0.4 : 0);
+    for (const ex of eyeXs) {
+      faceShapes.push(
+        // Soft bloom behind the lens.
+        { kind: 'rect', x: ex - (lensW + 4) / 2, y: eyeY - (lensH + 4) / 2, width: lensW + 4, height: lensH + 4, rx: (lensW + 4) * 0.4, fill: c.spark, opacity: 0.16 },
+        // Domed glowing lens: bright core → spark → deep rim.
+        {
+          kind: 'rect',
+          x: ex - lensW / 2,
+          y: eyeY - lensH / 2,
+          width: lensW,
+          height: lensH,
+          rx: lensW * 0.42,
+          fill: {
+            type: 'radial',
+            cx: ex,
+            cy: eyeY - 1.6,
+            r: lensH * 0.78,
+            stops: [
+              { offset: 0, color: lighten(c.spark, 0.55) },
+              { offset: 0.55, color: c.spark },
+              { offset: 1, color: lensRim },
+            ],
+          },
+        },
+        // Faint CRT scanlines across the lens.
+        { kind: 'line', x1: ex - lensW / 2 + 1, y1: eyeY - 1.5, x2: ex + lensW / 2 - 1, y2: eyeY - 1.5, stroke: lensRim, strokeWidth: 0.9, opacity: 0.4 },
+        { kind: 'line', x1: ex - lensW / 2 + 1, y1: eyeY + 2, x2: ex + lensW / 2 - 1, y2: eyeY + 2, stroke: lensRim, strokeWidth: 0.9, opacity: 0.3 },
+      );
+      pupilShapes.push(
+        { kind: 'circle', cx: ex, cy: eyeY + 0.5, r: pr, fill: darken(c.spark, 0.45) },
+        { kind: 'circle', cx: ex - 1.3, cy: eyeY - 1.2, r: 1.2, fill: WHITE, opacity: 0.95 },
+        { kind: 'circle', cx: ex + 1, cy: eyeY + 1.8, r: 0.6, fill: WHITE, opacity: 0.55 },
+      );
+    }
+    pupils = { shapes: pupilShapes, range: 1.6 };
   }
   if (i.mood === 'celebrating') {
     faceShapes.push({
