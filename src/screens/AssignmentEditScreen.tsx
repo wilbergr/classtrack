@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import VoiceCaptureButton from '../components/VoiceCaptureButton';
+import { checkTextFields } from '../contentFilter';
 import {
   createAssignment,
   deleteAssignment,
@@ -63,6 +64,8 @@ export default function AssignmentEditScreen({
   const [completed, setCompleted] = useState(false);
   const [picker, setPicker] = useState<'date' | 'time' | null>(null);
   const [ready, setReady] = useState(false);
+  // Inline, non-shaming block message from the local content filter (null = clean).
+  const [contentError, setContentError] = useState<string | null>(null);
 
   const headerHeight = useHeaderHeight();
   const bottomInset = useBottomInset(spacing.xl * 2);
@@ -125,6 +128,14 @@ export default function AssignmentEditScreen({
       Alert.alert('Subject required', 'Pick which class this belongs to.');
       return;
     }
+    // Local, synchronous content check (covers typed AND voice-dictated text,
+    // since transcripts land in these same fields before saving). Block the save
+    // inline rather than with an alert — see src/contentFilter.ts.
+    const blocked = checkTextFields([trimmed, notes]);
+    if (blocked) {
+      setContentError(blocked);
+      return;
+    }
     const input = {
       subjectId,
       title: trimmed,
@@ -184,7 +195,10 @@ export default function AssignmentEditScreen({
         <View style={styles.inputRow}>
           <TextInput
             value={title}
-            onChangeText={setTitle}
+            onChangeText={(t) => {
+              setTitle(t);
+              if (contentError) setContentError(null);
+            }}
             placeholder="e.g. Worksheet p. 12–14"
             placeholderTextColor={colors.textMuted}
             style={[styles.input, styles.inputFlex]}
@@ -266,7 +280,10 @@ export default function AssignmentEditScreen({
         <View style={styles.inputRowTop}>
           <TextInput
             value={notes}
-            onChangeText={setNotes}
+            onChangeText={(t) => {
+              setNotes(t);
+              if (contentError) setContentError(null);
+            }}
             placeholder="Anything to remember — pages, materials, topics…"
             placeholderTextColor={colors.textMuted}
             style={[styles.input, styles.inputFlex, styles.notesInput]}
@@ -286,6 +303,8 @@ export default function AssignmentEditScreen({
           />
           {voiceCaptureOn && <VoiceCaptureButton onTranscript={setNotes} />}
         </View>
+
+        {contentError && <Text style={styles.contentError}>{contentError}</Text>}
 
         <Pressable
           onPress={save}
@@ -370,6 +389,14 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   dueButtonText: { color: colors.text, fontSize: 15, fontWeight: '600' },
   hint: { color: colors.textMuted, fontSize: 12, marginTop: spacing.sm, lineHeight: 17 },
+  // Calm, non-shaming block notice (copy rulebook): muted tone, not alarm-red.
+  contentError: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: spacing.lg,
+    textAlign: 'center',
+  },
   saveButton: {
     backgroundColor: colors.primary,
     borderRadius: radius.md,

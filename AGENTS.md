@@ -223,9 +223,29 @@ colors (adaptive-icon background `#251507`, splash `#FFF6EC`, notification tint
 - Dev server on WSL2: never `sudo npx expo start`; use `--tunnel` or mirrored networking —
   see "Troubleshooting: running the dev server on WSL2" in `HANDOFF.md`.
 
+# Content filter
+
+Any screen with a free-text `TextInput` a student can save MUST gate its
+save/submit handler through `checkTextFields([...])` from `src/contentFilter.ts`
+(a pure, synchronous, on-device word-list check — never a network call; the app
+stays zero-backend). Block the save on a non-null return and show the returned
+message inline in a calm `textMuted` style (not alarm-red); clear it on the next
+keystroke. Do NOT check per-keystroke. Checking at save time also covers
+voice-dictated text, since `VoiceCaptureButton` only writes the transcript into
+the same field state. Already wired into all current free-text entry points
+(assignment title/notes, subject name, companion name in Settings + Onboarding,
+quick-add title) — mirror one of those when adding a new field. Word-lists are
+leaky in both directions; the false-positive/negative limits and the deliberate
+omissions (legit school vocab like "kill"/"weed"/anatomy terms) are documented at
+the top of `contentFilter.ts` — keep the copy rulebook (no shame, no category
+naming) when touching the block message.
+
 # Verification
 
 - `npx tsc --noEmit` must pass clean (strict mode).
+- `npm test` runs the pure-logic unit tests on Node's built-in runner with TS
+  type-stripping (`test/*.test.ts`). There is no jest-expo / RN render harness —
+  keep tests to pure modules (e.g. `src/contentFilter.ts`).
 - `npx expo export --platform android --output-dir <tmp>` is a good no-device smoke test
   (full Metro + Hermes bundle catches broken imports).
 
