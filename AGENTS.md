@@ -195,9 +195,13 @@ colors (adaptive-icon background `#251507`, splash `#FFF6EC`, notification tint
   (store defaults, AAB). `appVersionSource: "local"` → bump `android.versionCode` in `app.json`
   manually. Android package: `com.wilbergr.classtrack`.
 - `extra.eas.projectId` in `app.json` is the owner's EAS project id (public identifier, not a
-  secret) — written by the owner's first `eas build` and now committed. Don't regenerate it,
-  and never run `eas login`/`eas init`/`eas build` from an agent session. Runbook: see
-  "Android dev build" in `HANDOFF.md`.
+  secret) — written by the owner's first `eas build` and now committed. Don't regenerate it.
+- `eas build` (any profile, including `--local`) and `eas submit` MAY be run from an agent
+  session, but ONLY with the supervising captain's explicit real-time approval on each
+  individual invocation. Never run either silently or with any auto-approve/non-interactive
+  flag (e.g. `--non-interactive`, `--auto-submit`, `--no-wait` used to skip a confirmation).
+- `eas login` and `eas init` remain owner-only: never run either from an agent session.
+- Runbook: see "Android dev build" in `HANDOFF.md`.
 - Dev server on WSL2: never `sudo npx expo start`; use `--tunnel` or mirrored networking —
   see "Troubleshooting: running the dev server on WSL2" in `HANDOFF.md`.
 
