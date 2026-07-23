@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 
 import Companion, { EnergyMeter } from '../components/Companion';
+import { checkTextFields } from '../contentFilter';
 import { useBottomInset } from '../hooks';
 import { setSettingAsync, updateSettingsAsync } from '../settings';
 import {
@@ -73,6 +74,8 @@ export default function OnboardingScreen({ onDone }: Props) {
   const [vibe, setVibe] = useState<Vibe>('hype');
   const [companion, setCompanion] = useState<CompanionId>('wisp');
   const [name, setName] = useState('');
+  // Inline, non-shaming block message from the local content filter (null = clean).
+  const [nameError, setNameError] = useState<string | null>(null);
 
   /** The signature accent each sidekick brings — shown on its chip. */
   const accentFor = useCallback(
@@ -103,6 +106,21 @@ export default function OnboardingScreen({ onDone }: Props) {
     },
     [vibe, companion, name, onDone],
   );
+
+  // Advance from step 0, or finish on step 1 — but block finishing if the typed
+  // sidekick name trips the local content filter (see src/contentFilter.ts).
+  const next = useCallback(() => {
+    if (step < 1) {
+      setStep(step + 1);
+      return;
+    }
+    const blocked = companion !== 'none' ? checkTextFields([name]) : null;
+    if (blocked) {
+      setNameError(blocked);
+      return;
+    }
+    finish(false);
+  }, [step, companion, name, finish]);
 
   return (
     <KeyboardAvoidingView
@@ -175,14 +193,20 @@ export default function OnboardingScreen({ onDone }: Props) {
               {COMPANIONS.find((c) => c.id === companion)?.blurb}
             </Text>
             {companion !== 'none' && (
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder={`Name (or keep ${DEFAULT_NAMES[companion as Exclude<CompanionId, 'none'>]})`}
-                placeholderTextColor={colors.textMuted}
-                style={styles.input}
-                maxLength={24}
-              />
+              <>
+                <TextInput
+                  value={name}
+                  onChangeText={(t) => {
+                    setName(t);
+                    if (nameError) setNameError(null);
+                  }}
+                  placeholder={`Name (or keep ${DEFAULT_NAMES[companion as Exclude<CompanionId, 'none'>]})`}
+                  placeholderTextColor={colors.textMuted}
+                  style={styles.input}
+                  maxLength={24}
+                />
+                {nameError && <Text style={styles.contentError}>{nameError}</Text>}
+              </>
             )}
           </>
         )}
@@ -197,7 +221,7 @@ export default function OnboardingScreen({ onDone }: Props) {
           <View />
         )}
         <Pressable
-          onPress={() => (step < 1 ? setStep(step + 1) : finish(false))}
+          onPress={next}
           style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}
           accessibilityRole="button"
         >
@@ -314,6 +338,8 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
     marginTop: spacing.sm,
   },
+  // Calm, non-shaming block notice (copy rulebook): muted tone, not alarm-red.
+  contentError: { color: colors.textMuted, fontSize: 13, fontWeight: '600', marginTop: spacing.sm },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import EmptyState from '../components/EmptyState';
+import { checkTextFields } from '../contentFilter';
 import {
   countOpenAssignments,
   createSubject,
@@ -39,6 +40,8 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
   const [editing, setEditing] = useState<Subject | null>(null);
   const [name, setName] = useState('');
   const [color, setColor] = useState(subjectPalette[0]);
+  // Inline, non-shaming block message from the local content filter (null = clean).
+  const [contentError, setContentError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [subs, counts] = await Promise.all([listSubjects(), countOpenAssignments()]);
@@ -58,6 +61,7 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
       setEditing(subject);
       setName(subject?.name ?? '');
       setColor(subject?.color ?? subjectPalette[subjects.length % subjectPalette.length]);
+      setContentError(null);
       setEditorVisible(true);
     },
     [subjects.length],
@@ -77,6 +81,12 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
     const trimmed = name.trim();
     if (!trimmed) {
       Alert.alert('Name required', 'Give the subject a name, like “Math” or “Biology”.');
+      return;
+    }
+    // Local, synchronous content check — see src/contentFilter.ts.
+    const blocked = checkTextFields([trimmed]);
+    if (blocked) {
+      setContentError(blocked);
       return;
     }
     if (editing) {
@@ -177,7 +187,10 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
             <Text style={styles.modalTitle}>{editing ? 'Edit subject' : 'New subject'}</Text>
             <TextInput
               value={name}
-              onChangeText={setName}
+              onChangeText={(t) => {
+                setName(t);
+                if (contentError) setContentError(null);
+              }}
               placeholder="Subject name (e.g. Math)"
               placeholderTextColor={colors.textMuted}
               style={styles.input}
@@ -186,6 +199,7 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
               returnKeyType="done"
               onSubmitEditing={save}
             />
+            {contentError && <Text style={styles.contentError}>{contentError}</Text>}
             <Text style={styles.fieldLabel}>Color</Text>
             <View style={styles.swatchGrid}>
               {subjectPalette.map((c) => (
@@ -279,6 +293,8 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
+  // Calm, non-shaming block notice (copy rulebook): muted tone, not alarm-red.
+  contentError: { color: colors.textMuted, fontSize: 13, fontWeight: '600', marginTop: spacing.sm },
   swatchGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   swatch: { width: 36, height: 36, borderRadius: 18 },
   swatchSelected: { borderWidth: 3, borderColor: colors.text },

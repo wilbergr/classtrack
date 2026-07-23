@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import VoiceCaptureButton from './VoiceCaptureButton';
+import { checkTextFields } from '../contentFilter';
 import { createAssignment, listAssignmentTitles, listSubjects } from '../db/database';
 import { playSound } from '../feedback';
 import { awardCaptureAsync } from '../gamification/engine';
@@ -69,6 +70,8 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
   const [due, setDue] = useState<DueChoice>('tomorrow');
   const [type, setType] = useState<AssignmentType>('homework');
   const [addedCount, setAddedCount] = useState(0);
+  // Inline, non-shaming block message from the local content filter (null = clean).
+  const [contentError, setContentError] = useState<string | null>(null);
   const manualPick = useRef(false);
   const inputRef = useRef<TextInput>(null);
   // subject -> lowercased first words of its past titles (inference heuristic).
@@ -104,6 +107,7 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
       setDue('tomorrow');
       setType('homework');
       setAddedCount(0);
+      setContentError(null);
       manualPick.current = false;
       load();
       playSound('whoosh');
@@ -114,11 +118,12 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
   const onTitleChange = useCallback(
     (text: string) => {
       setTitle(text);
+      if (contentError) setContentError(null);
       if (manualPick.current || subjects.length === 0) return;
       const inferred = inferSubject(text, subjects, wordMap.current);
       if (inferred != null) setSubjectId(inferred);
     },
-    [subjects],
+    [subjects, contentError],
   );
 
   const pickSubject = useCallback((id: number) => {
@@ -139,6 +144,13 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
   const add = useCallback(async () => {
     const trimmed = title.trim();
     if (!trimmed || subjectId == null) return;
+    // Local, synchronous content check (covers typed AND voice-dictated titles) —
+    // see src/contentFilter.ts. Blocks inline; the sheet stays open.
+    const blocked = checkTextFields([trimmed]);
+    if (blocked) {
+      setContentError(blocked);
+      return;
+    }
     const a = await createAssignment({
       subjectId,
       title: trimmed,
@@ -200,6 +212,8 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
               />
               {voiceCaptureOn && <VoiceCaptureButton onTranscript={onTitleChange} />}
             </View>
+
+            {contentError && <Text style={styles.contentError}>{contentError}</Text>}
 
             <ScrollView
               horizontal
@@ -360,6 +374,13 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.card,
   },
   inputFlex: { flex: 1 },
+  // Calm, non-shaming block notice (copy rulebook): muted tone, not alarm-red.
+  contentError: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: spacing.sm,
+  },
   chipRow: { gap: spacing.sm, paddingVertical: spacing.md },
   rowWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   chip: {

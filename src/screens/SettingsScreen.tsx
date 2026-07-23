@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 
+import { checkTextFields } from '../contentFilter';
 import { VOICE_PACK_META } from '../gamification/copy';
 import { listUnlocksAsync } from '../gamification/engine';
 import { useBottomInset, useSettings } from '../hooks';
@@ -81,6 +82,8 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
   const [permission, setPermission] = useState<PermissionState>('unknown');
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
   const [name, setName] = useState(settings.companionName);
+  // Inline, non-shaming block message from the local content filter (null = clean).
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setPermission(await getNotificationPermissionAsync());
@@ -289,15 +292,27 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
             <Text style={styles.fieldLabel}>Name</Text>
             <TextInput
               value={name}
-              onChangeText={setName}
-              onEndEditing={() =>
-                updateSettingsAsync({ companionName: name.trim() || settings.companionName })
-              }
+              onChangeText={(t) => {
+                setName(t);
+                if (nameError) setNameError(null);
+              }}
+              onEndEditing={() => {
+                // Local, synchronous content check — see src/contentFilter.ts.
+                // On a flag, don't persist and revert to the saved name.
+                const blocked = checkTextFields([name]);
+                if (blocked) {
+                  setNameError(blocked);
+                  setName(settings.companionName);
+                  return;
+                }
+                updateSettingsAsync({ companionName: name.trim() || settings.companionName });
+              }}
               placeholder="Name your sidekick"
               placeholderTextColor={colors.textMuted}
               style={styles.input}
               maxLength={24}
             />
+            {nameError && <Text style={styles.contentError}>{nameError}</Text>}
           </>
         )}
         {settings.themeSource === 'companion' && (
@@ -505,6 +520,8 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   pressed: { opacity: 0.8 },
   buttonText: { color: colors.primaryText, fontSize: 15, fontWeight: '600' },
   hint: { color: colors.textMuted, fontSize: 12, lineHeight: 17, marginTop: spacing.md },
+  // Calm, non-shaming block notice (copy rulebook): muted tone, not alarm-red.
+  contentError: { color: colors.textMuted, fontSize: 13, fontWeight: '600', marginTop: spacing.sm },
   bodyText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   voiceRow: {
     flexDirection: 'row',

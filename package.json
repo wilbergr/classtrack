@@ -37,7 +37,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "branding": "node scripts/generate-branding.js"
+    "branding": "node scripts/generate-branding.js",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
   },
   "private": true
 }
