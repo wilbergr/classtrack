@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.wilbergr.classtrack",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#251507",
         "foregroundImage": "./assets/android-icon-foreground.png",
