@@ -13,7 +13,7 @@ import { listOpenAssignmentsWithSubject, listSubjects, setAssignmentCompleted } 
 import { bucketByDueStatus, startOfDay } from '../dates';
 import { awardCompleteAsync } from '../gamification/engine';
 import { onSpark } from '../gamification/events';
-import { useCalmMotion } from '../hooks';
+import { useBottomInset, useCalmMotion } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import { refreshAssignmentRemindersAsync } from '../notifications';
 import { spacing, useTheme, type ThemeColors } from '../theme';
@@ -35,6 +35,8 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
   const [dayState, setDayState] = useState({ hasOverdue: false, hasDueToday: false });
   const [dayLoads, setDayLoads] = useState<number[]>([]);
   const calm = useCalmMotion();
+  // Clear the FAB (96) and, on non-tab layouts, the system nav area.
+  const listBottom = useBottomInset(96);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useLayoutEffect(() => {
@@ -136,7 +138,7 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
       <SectionList
         sections={sections}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottom }]}
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
             <View style={[styles.sectionDot, { backgroundColor: section.color }]} />
@@ -196,7 +198,8 @@ export default function TodayScreen({ navigation }: TabScreenProps<'Today'>) {
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  listContent: { paddingTop: spacing.md, paddingBottom: 96, flexGrow: 1 },
+  // paddingBottom applied via useBottomInset (safe-area aware) at the SectionList.
+  listContent: { paddingTop: spacing.md, flexGrow: 1 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

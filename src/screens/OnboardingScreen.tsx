@@ -7,7 +7,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +16,7 @@ import {
 } from 'react-native';
 
 import Companion, { EnergyMeter } from '../components/Companion';
+import { useBottomInset } from '../hooks';
 import { setSettingAsync, updateSettingsAsync } from '../settings';
 import {
   COMPANION_THEME,
@@ -68,6 +68,7 @@ interface Props {
 export default function OnboardingScreen({ onDone }: Props) {
   const { colors, dark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const footerBottom = useBottomInset(spacing.xl);
   const [step, setStep] = useState(0);
   const [vibe, setVibe] = useState<Vibe>('hype');
   const [companion, setCompanion] = useState<CompanionId>('wisp');
@@ -106,7 +107,9 @@ export default function OnboardingScreen({ onDone }: Props) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // 'padding' on both platforms — see AGENTS.md keyboard-handling note
+      // (Android edge-to-edge no longer auto-resizes the window for the keyboard).
+      behavior="padding"
     >
       <View style={styles.topBar}>
         <Text style={styles.stepDots}>{['●○', '●●'][step]}</Text>
@@ -185,7 +188,7 @@ export default function OnboardingScreen({ onDone }: Props) {
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: footerBottom }]}>
         {step > 0 ? (
           <Pressable onPress={() => setStep(step - 1)} hitSlop={spacing.md} accessibilityRole="button">
             <Text style={styles.back}>Back</Text>
@@ -316,7 +319,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.lg,
-    paddingBottom: spacing.xl,
+    // paddingBottom applied via useBottomInset (safe-area aware) inline.
   },
   back: { color: colors.textMuted, fontSize: 15, fontWeight: '600' },
   nextButton: {

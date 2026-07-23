@@ -6,7 +6,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,7 +18,7 @@ import VoiceCaptureButton from './VoiceCaptureButton';
 import { createAssignment, listAssignmentTitles, listSubjects } from '../db/database';
 import { playSound } from '../feedback';
 import { awardCaptureAsync } from '../gamification/engine';
-import { useSettings } from '../hooks';
+import { useBottomInset, useSettings } from '../hooks';
 import { refreshAssignmentRemindersAsync } from '../notifications';
 import { getSettingAsync, setSettingAsync } from '../settings';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
@@ -63,6 +62,7 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const { voiceCaptureOn } = useSettings();
+  const sheetBottom = useBottomInset(spacing.xl);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState<number | null>(null);
@@ -170,8 +170,10 @@ export default function QuickAddSheet({ visible, onClose, onAdded, onAllDetails 
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTouch} onPress={close} accessibilityLabel="Close" />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.sheet}>
+        {/* 'padding' on both platforms — see AGENTS.md keyboard-handling note
+            (Android edge-to-edge no longer auto-resizes the window). */}
+        <KeyboardAvoidingView behavior="padding">
+          <View style={[styles.sheet, { paddingBottom: sheetBottom }]}>
             <View style={styles.handle} />
             <View style={styles.headerRow}>
               <Text style={styles.heading}>Quick add</Text>
@@ -327,7 +329,7 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
+    // paddingBottom applied via useBottomInset (safe-area aware) inline.
     paddingTop: spacing.sm,
   },
   handle: {

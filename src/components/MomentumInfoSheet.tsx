@@ -8,6 +8,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import ShieldIcon from './ShieldIcon';
 import { GRACE_CAP } from '../gamification/engine';
+import { useBottomInset } from '../hooks';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 
 interface Props {
@@ -22,12 +23,13 @@ interface Props {
 export default function MomentumInfoSheet({ visible, onClose, grace, hasCompanion }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const sheetBottom = useBottomInset(spacing.xl);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTouch} onPress={onClose} accessibilityLabel="Close" />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: sheetBottom }]}>
           <View style={styles.handle} />
           <Text style={styles.heading}>Momentum & shields</Text>
 
@@ -103,7 +105,7 @@ const makeStyles = (colors: ThemeColors) =>
       borderTopLeftRadius: radius.lg,
       borderTopRightRadius: radius.lg,
       paddingHorizontal: spacing.lg,
-      paddingBottom: spacing.xl,
+      // paddingBottom applied via useBottomInset (safe-area aware) inline.
       paddingTop: spacing.sm,
     },
     handle: {

@@ -26,7 +26,7 @@ import {
 } from '../gamification/engine';
 import { onProgressChanged } from '../gamification/events';
 import { levelProgress } from '../gamification/levels';
-import { useSettings } from '../hooks';
+import { useBottomInset, useSettings } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
 
@@ -43,6 +43,7 @@ export default function ProgressScreen({ navigation }: RootStackScreenProps<'Pro
   const [showEvolution, setShowEvolution] = useState(false);
   const [showMomentumInfo, setShowMomentumInfo] = useState(false);
   const settings = useSettings();
+  const bottomInset = useBottomInset(spacing.xl * 2);
 
   const load = useCallback(async () => {
     await settleMomentumAsync();
@@ -72,7 +73,10 @@ export default function ProgressScreen({ navigation }: RootStackScreenProps<'Pro
   const species = settings.companion === 'none' ? null : settings.companion;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
+    >
       <View style={styles.heroCard}>
         <View
           style={styles.ringWrap}
@@ -212,7 +216,8 @@ export default function ProgressScreen({ navigation }: RootStackScreenProps<'Pro
 
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
+  // paddingBottom applied via useBottomInset (safe-area aware) at the ScrollView.
+  content: { padding: spacing.lg },
   heroCard: {
     backgroundColor: colors.card,
     borderRadius: radius.lg,

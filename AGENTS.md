@@ -25,16 +25,34 @@ JSON column). Any mutation must go through `refreshAssignmentRemindersAsync()` (
 ids, reschedules, persists new ids); deletes return the ids so callers can cancel them.
 
 Keyboard handling on form screens (see `AssignmentEditScreen`): `KeyboardAvoidingView` with
-`behavior` `padding` on iOS (plus `keyboardVerticalOffset={useHeaderHeight()}` — screens sit
-under a native-stack header) and `undefined` on Android, where the window already resizes
-(`softwareKeyboardLayoutMode` defaults to `resize`; padding there would double-compensate).
-Neither platform auto-scrolls a bottom-of-form input into the shrunken viewport — scroll it
-into view explicitly on focus/`keyboardDidShow`, deferred one frame (`requestAnimationFrame`:
-`keyboardDidShow` can fire before the resized layout lands, under-scrolling). Growable
-multiline inputs need two more things: re-scroll on `onContentSizeChange` (the caret drifts
-below the keyboard as the field grows while typing — focus/didShow only cover the initial
-moment) and a `maxHeight` so a long value scrolls internally instead of outgrowing the
-shrunken viewport.
+`behavior="padding"` on BOTH platforms (plus `keyboardVerticalOffset={useHeaderHeight()}`
+where the screen sits under a native-stack header — 0 otherwise). Android does NOT auto-resize
+the window for the keyboard: this app runs under Android edge-to-edge (default and enforced
+since Expo SDK 54 / API 35), which draws behind the system bars and disables the old
+`adjustResize` window shrink — so `behavior={undefined}` on Android is a no-op and the keyboard
+overlays the field (this was the real cause of the notes-field bug that survived two "resize
+handles it" fixes; `softwareKeyboardLayoutMode` was never actually configured, only asserted in
+a comment). With no window resize left, `padding` does not double-compensate — it is what lifts
+the content. Neither platform auto-scrolls a bottom-of-form input into the padding-shrunken
+viewport — scroll it into view explicitly on focus/`keyboardDidShow`, deferred one frame
+(`requestAnimationFrame`: `keyboardDidShow` can fire before the layout settles, under-scrolling).
+Growable multiline inputs need two more things: re-scroll on `onContentSizeChange` (the caret
+drifts below the keyboard as the field grows while typing — focus/didShow only cover the initial
+moment) and a `maxHeight` so a long value scrolls internally instead of outgrowing the shrunken
+viewport. NOTE: verify keyboard fixes on a REAL Android device/emulator (edge-to-edge behavior
+does not reproduce on web or the iOS simulator) — `tsc`/bundle checks alone are not sufficient.
+
+Safe-area bottom inset on scrollable content: every screen/sheet whose scroll content or
+bottom-anchored control reaches the device bottom edge MUST pad by the real safe-area bottom
+inset, not a fixed constant — under edge-to-edge the app draws behind the system nav (gesture
+bar / on-screen buttons), which both hides bottom controls and swallows their taps. Use the
+single `useBottomInset(base)` hook (`src/hooks.ts` = `base + useSafeAreaInsets().bottom`) for
+`contentContainerStyle.paddingBottom` (or a bottom-sheet's `paddingBottom`); never hardcode
+`spacing.xl`/`96`/etc. for this. A root `SafeAreaProvider` (`App.tsx`) makes insets resolve
+everywhere, including Onboarding and transparent `Modal`s that render outside
+`NavigationContainer`'s own `SafeAreaProviderCompat`. Exceptions: tab-screen tab bars already
+add the inset to their own height (`App.tsx` `Tabs`), and `HomeScreen`'s `stage` is a centered
+non-scroll layout with no bottom-edge control, so it is intentionally left unpadded.
 
 # Spark (gamification) — Layer 1.5
 

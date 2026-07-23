@@ -24,7 +24,7 @@ import {
 } from '../db/database';
 import { formatDayLabel, formatTime } from '../dates';
 import { awardCaptureAsync } from '../gamification/engine';
-import { useSettings } from '../hooks';
+import { useBottomInset, useSettings } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { cancelRemindersAsync, refreshAssignmentRemindersAsync } from '../notifications';
 import { radius, spacing, useTheme, type ThemeColors } from '../theme';
@@ -65,11 +65,12 @@ export default function AssignmentEditScreen({
   const [ready, setReady] = useState(false);
 
   const headerHeight = useHeaderHeight();
+  const bottomInset = useBottomInset(spacing.xl * 2);
   const scrollRef = useRef<ScrollView>(null);
   const notesFocused = useRef(false);
 
   // Notes sits at the bottom of the form; neither platform scrolls it into view on its own
-  // once the keyboard shrinks the viewport (Android resize / iOS KeyboardAvoidingView padding).
+  // once the KeyboardAvoidingView padding shrinks the viewport for the keyboard.
   const scrollNotesIntoView = useCallback(() => {
     if (!notesFocused.current) return;
     // Defer a frame: keyboardDidShow can fire before the resized layout lands, and
@@ -165,15 +166,18 @@ export default function AssignmentEditScreen({
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      // Android resizes the window itself (softwareKeyboardLayoutMode: resize);
-      // adding padding there too would double-compensate.
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      // 'padding' on BOTH platforms: under Android edge-to-edge (default since
+      // Expo SDK 54 / API 35) the window no longer auto-resizes for the keyboard,
+      // so a passive KeyboardAvoidingView does nothing and the keyboard overlays
+      // the field. Padding is what lifts the content; there is no window resize
+      // left to double-compensate against. See AGENTS.md keyboard-handling note.
+      behavior="padding"
       keyboardVerticalOffset={headerHeight}
     >
       <ScrollView
         ref={scrollRef}
         style={styles.container}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.fieldLabel}>Title</Text>
@@ -312,7 +316,9 @@ export default function AssignmentEditScreen({
 
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
+  // paddingBottom is applied dynamically via useBottomInset so the Add/Save
+  // button always clears the system nav area (see contentContainerStyle above).
+  content: { padding: spacing.lg },
   fieldLabel: {
     color: colors.textMuted,
     fontSize: 13,

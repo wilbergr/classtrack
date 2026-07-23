@@ -1,6 +1,8 @@
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -14,7 +16,7 @@ import {
 
 import { VOICE_PACK_META } from '../gamification/copy';
 import { listUnlocksAsync } from '../gamification/engine';
-import { useSettings } from '../hooks';
+import { useBottomInset, useSettings } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import {
   ensureNotificationPermissionAsync,
@@ -74,6 +76,8 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
   const { colors, dark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const settings = useSettings();
+  const headerHeight = useHeaderHeight();
+  const bottomInset = useBottomInset(spacing.xl * 2);
   const [permission, setPermission] = useState<PermissionState>('unknown');
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
   const [name, setName] = useState(settings.companionName);
@@ -120,7 +124,18 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
   }, []);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      // 'padding' on both platforms — see AGENTS.md keyboard-handling note
+      // (Android edge-to-edge no longer auto-resizes the window for the keyboard).
+      behavior="padding"
+      keyboardVerticalOffset={headerHeight}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]}
+        keyboardShouldPersistTaps="handled"
+      >
       <Text style={styles.sectionTitle}>Style</Text>
       <View style={styles.card}>
         <Text style={styles.fieldLabel}>Theme</Text>
@@ -407,13 +422,15 @@ export default function SettingsScreen(_props: TabScreenProps<'Settings'>) {
           <Text style={styles.rowValue}>1.0.0</Text>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
+  // paddingBottom applied via useBottomInset (safe-area aware) at the ScrollView.
+  content: { padding: spacing.lg },
   sectionTitle: {
     color: colors.textMuted,
     fontSize: 13,
