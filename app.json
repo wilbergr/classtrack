@@ -58,7 +58,8 @@
       ],
       "expo-speech-recognition",
       "expo-asset",
-      "expo-status-bar"
+      "expo-status-bar",
+      "./plugins/withGradleThrottle"
     ],
     "extra": {
       "eas": {
