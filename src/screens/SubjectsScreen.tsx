@@ -5,7 +5,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -21,6 +20,7 @@ import {
   listSubjects,
   updateSubject,
 } from '../db/database';
+import { useBottomInset } from '../hooks';
 import type { TabScreenProps } from '../navigation';
 import { cancelRemindersAsync } from '../notifications';
 import { radius, spacing, subjectPalette, useTheme, type ThemeColors } from '../theme';
@@ -29,6 +29,7 @@ import type { Subject } from '../types';
 export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'>) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const listBottom = useBottomInset(spacing.md);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [openCounts, setOpenCounts] = useState<Record<number, number>>({});
   const [loaded, setLoaded] = useState(false);
@@ -116,7 +117,7 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
       <FlatList
         data={subjects}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottom }]}
         renderItem={({ item }) => {
           const count = openCounts[item.id] ?? 0;
           return (
@@ -167,7 +168,9 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
         onRequestClose={() => setEditorVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          // 'padding' on both platforms — see AGENTS.md keyboard-handling note
+          // (Android edge-to-edge no longer auto-resizes the window for the keyboard).
+          behavior="padding"
           style={styles.modalBackdrop}
         >
           <View style={styles.modalCard}>
@@ -227,7 +230,8 @@ export default function SubjectsScreen({ navigation }: TabScreenProps<'Subjects'
 
 const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  listContent: { paddingVertical: spacing.md, flexGrow: 1 },
+  // paddingBottom applied via useBottomInset (safe-area aware) at the FlatList.
+  listContent: { paddingTop: spacing.md, flexGrow: 1 },
   headerAction: { color: colors.primary, fontSize: 16, fontWeight: '600' },
   row: {
     flexDirection: 'row',

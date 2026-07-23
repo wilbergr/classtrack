@@ -6,7 +6,7 @@ import AssignmentRow from '../components/AssignmentRow';
 import EmptyState from '../components/EmptyState';
 import { getSubject, listAssignmentsForSubject, setAssignmentCompleted } from '../db/database';
 import { awardCompleteAsync } from '../gamification/engine';
-import { useCalmMotion } from '../hooks';
+import { useBottomInset, useCalmMotion } from '../hooks';
 import type { RootStackScreenProps } from '../navigation';
 import { refreshAssignmentRemindersAsync } from '../notifications';
 import { spacing, useTheme, type ThemeColors } from '../theme';
@@ -28,6 +28,7 @@ export default function SubjectDetailScreen({
   const [sections, setSections] = useState<Section[]>([]);
   const [loaded, setLoaded] = useState(false);
   const calm = useCalmMotion();
+  const listBottom = useBottomInset(spacing.md);
 
   const load = useCallback(async () => {
     const s = await getSubject(subjectId);
@@ -93,7 +94,7 @@ export default function SubjectDetailScreen({
       <SectionList
         sections={sections}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: listBottom }]}
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -136,7 +137,8 @@ const makeStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   bannerDot: { width: 14, height: 14, borderRadius: 7, marginRight: spacing.sm },
   bannerText: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  listContent: { paddingVertical: spacing.md, flexGrow: 1 },
+  // paddingBottom applied via useBottomInset (safe-area aware) at the SectionList.
+  listContent: { paddingTop: spacing.md, flexGrow: 1 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

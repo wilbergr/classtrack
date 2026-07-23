@@ -4,7 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 import SparkBurst from './src/components/SparkBurst';
 import TabBarIcon from './src/components/TabBarIcon';
@@ -69,9 +73,15 @@ function Tabs() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppShell />
-    </ThemeProvider>
+    // Root SafeAreaProvider so useSafeAreaInsets / useBottomInset resolve
+    // everywhere — including Onboarding and the transparent Modals, which render
+    // OUTSIDE NavigationContainer's own SafeAreaProviderCompat (which would
+    // otherwise be the only provider, leaving those trees to throw).
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <ThemeProvider>
+        <AppShell />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
